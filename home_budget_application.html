@@ -1,0 +1,1768 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Budget | Οικογενειακός Προϋπολογισμός</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#16a34a',
+                            600: '#15803d',
+                            700: '#166534',
+                            800: '#14532d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Sticky Column Fixes for Table */
+        .sticky-col-left {
+            position: sticky;
+            left: 0;
+            z-index: 20;
+        }
+        .sticky-col-header {
+            position: sticky;
+            top: 0;
+            z-index: 30;
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Hide scrollbars for neat mobile navigation */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Responsive sticky column widths */
+        @media (max-width: 640px) {
+            .sticky-col-left {
+                min-width: 130px !important;
+                max-width: 140px !important;
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col pb-16 md:pb-6">
+
+    <!-- TOP HEADER -->
+    <header class="bg-slate-900 text-white sticky top-0 z-40 shadow-md border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30 flex-shrink-0">
+                    <i class="fa-solid fa-table-cells text-lg sm:text-xl"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h1 class="text-sm sm:text-base font-bold leading-tight">Home Budget</h1>
+                        <span class="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-mono font-medium">0,00 €</span>
+                    </div>
+                    <p class="text-[10px] sm:text-[11px] text-slate-400">Οικογενειακός Προϋπολογισμός Εσόδων & Εξόδων</p>
+                </div>
+            </div>
+
+            <!-- Global Controls & Status -->
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <!-- Storage status badge -->
+                <div id="storageStatusBadge" class="hidden sm:flex items-center space-x-1.5 text-[11px] text-emerald-400 bg-slate-800 px-2.5 py-1.5 rounded-xl border border-slate-700/80" title="Κατάσταση τοπικής αποθήκευσης">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span id="storageStatusText">Αποθηκευμένο</span>
+                </div>
+
+                <!-- Year Selector -->
+                <div class="flex items-center bg-slate-800 rounded-xl p-1 border border-slate-700 shadow-inner">
+                    <button onclick="changeYear(-1)" class="px-2 py-1 text-slate-400 hover:text-white transition rounded-lg hover:bg-slate-700" title="Προηγούμενο Έτος">
+                        <i class="fa-solid fa-chevron-left text-xs"></i>
+                    </button>
+                    <span id="currentYearDisplay" class="px-2.5 sm:px-3 font-bold text-xs sm:text-sm text-emerald-400 min-w-[55px] sm:min-w-[60px] text-center select-none">2026</span>
+                    <button onclick="changeYear(1)" class="px-2 py-1 text-slate-400 hover:text-white transition rounded-lg hover:bg-slate-700" title="Επόμενο Έτος">
+                        <i class="fa-solid fa-chevron-right text-xs"></i>
+                    </button>
+                </div>
+
+                <!-- Quick Entry Shortcut -->
+                <button onclick="switchTab('entry')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-2 rounded-xl transition flex items-center space-x-1.5 shadow-sm active:scale-95">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <span class="hidden sm:inline">Καταχώρηση</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- NAVIGATION TABS BAR -->
+    <nav class="bg-white border-b border-slate-200 sticky top-[53px] sm:top-[57px] z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-2 sm:px-4 flex space-x-1 sm:space-x-2 md:space-x-4 overflow-x-auto no-scrollbar">
+            <button onclick="switchTab('matrix')" id="nav-matrix" class="nav-btn py-3 px-3 md:px-4 font-semibold text-xs md:text-sm border-b-2 border-emerald-600 text-emerald-700 flex items-center space-x-2 whitespace-nowrap bg-emerald-50/40 md:bg-transparent">
+                <i class="fa-solid fa-table"></i>
+                <span>Πίνακας Excel (12 Μήνες)</span>
+            </button>
+            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn py-3 px-3 md:px-4 font-semibold text-xs md:text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center space-x-2 whitespace-nowrap">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>Επισκόπηση & Γραφήματα</span>
+            </button>
+            <button onclick="switchTab('entry')" id="nav-entry" class="nav-btn py-3 px-3 md:px-4 font-semibold text-xs md:text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center space-x-2 whitespace-nowrap">
+                <i class="fa-solid fa-calendar-days"></i>
+                <span>Μηνιαία Καταχώρηση</span>
+            </button>
+            <button onclick="switchTab('categories')" id="nav-categories" class="nav-btn py-3 px-3 md:px-4 font-semibold text-xs md:text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center space-x-2 whitespace-nowrap">
+                <i class="fa-solid fa-tags"></i>
+                <span>Διαχείριση Κατηγοριών</span>
+            </button>
+            <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn py-3 px-3 md:px-4 font-semibold text-xs md:text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center space-x-2 whitespace-nowrap">
+                <i class="fa-solid fa-file-export"></i>
+                <span>Εξαγωγή & Backup</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <main class="max-w-7xl mx-auto px-2 sm:px-4 py-4 flex-grow w-full">
+
+        <!-- ================= VIEW 1: MATRIX SHEET (EXCEL STYLE) ================= -->
+        <section id="view-matrix" class="space-y-4">
+            <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap justify-between items-center gap-3">
+                <div class="flex items-center flex-wrap gap-1.5 sm:gap-2">
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider mr-1">Προβολή:</span>
+                    <button onclick="toggleMatrixDisplay('ALL')" id="btnDispAll" class="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-slate-800 text-white shadow-sm transition">Όλα (B / A / Diff)</button>
+                    <button onclick="toggleMatrixDisplay('ACTUAL')" id="btnDispAct" class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Μόνο Πραγματικά</button>
+                    <button onclick="toggleMatrixDisplay('BUDGET')" id="btnDispBud" class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Μόνο Budget</button>
+                </div>
+
+                <div class="flex items-center space-x-2 text-xs">
+                    <button onclick="scrollToCurrentMonth()" class="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-emerald-500 hover:text-emerald-700 bg-slate-50 font-semibold text-slate-600 flex items-center space-x-1.5 transition active:scale-95" title="Μετάβαση στον τρέχοντα μήνα στον πίνακα">
+                        <i class="fa-solid fa-crosshairs text-emerald-600"></i>
+                        <span>Τρέχων Μήνας</span>
+                    </button>
+                    <div class="hidden md:flex items-center text-slate-400 italic">
+                        <i class="fa-solid fa-circle-info text-emerald-600 mr-1"></i>
+                        Κάντε κλικ σε οποιοδήποτε κελάκι για γρήγορη επεξεργασία.
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto max-h-[75vh]">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead class="bg-slate-900 text-white sticky top-0 z-30 shadow">
+                            <tr id="matrixHeaderRow">
+                                <th class="p-3 font-bold sticky-col-left bg-slate-900 w-36 sm:w-56 min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px] shadow-r border-b border-slate-800 truncate">
+                                    ΚΑΤΗΓΟΡΙΕΣ / ΜΗΝΕΣ
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="matrixTableBody" class="divide-y divide-slate-200"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= VIEW 2: DASHBOARD & CHARTS ================= -->
+        <section id="view-dashboard" class="space-y-6 hidden">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+                    <div class="text-[11px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Ετησια Εσοδα</div>
+                    <div id="kpiTotalIncome" class="text-lg sm:text-2xl font-bold text-emerald-600">0,00 €</div>
+                    <div class="text-[10px] sm:text-[11px] text-slate-500 mt-1">Πραγματικό Σύνολο</div>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+                    <div class="text-[11px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Ετησια Εξοδα</div>
+                    <div id="kpiTotalExpenses" class="text-lg sm:text-2xl font-bold text-rose-600">0,00 €</div>
+                    <div class="text-[10px] sm:text-[11px] text-slate-500 mt-1">Ετήσια + Μηνιαία Έξοδα</div>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+                    <div class="text-[11px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Καθαρο Υπολοιπο (NET)</div>
+                    <div id="kpiNetBalance" class="text-lg sm:text-2xl font-bold text-slate-800">0,00 €</div>
+                    <div class="text-[10px] sm:text-[11px] text-slate-500 mt-1">Έσοδα - Έξοδα</div>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
+                    <div class="text-[11px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Ποσοστο Αποταμιευσης</div>
+                    <div id="kpiSavingsRate" class="text-lg sm:text-2xl font-bold text-amber-600">0%</div>
+                    <div class="w-full bg-slate-100 rounded-full h-1.5 mt-2 overflow-hidden">
+                        <div id="kpiSavingsRateBar" class="bg-amber-500 h-1.5 rounded-full transition-all duration-500" style="width:0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2">
+                    <h3 class="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center justify-between">
+                        <span>Πορεία Εσόδων vs Εξόδων (12 Μήνες)</span>
+                        <i class="fa-solid fa-chart-column text-slate-400"></i>
+                    </h3>
+                    <div class="relative h-64 sm:h-72 w-full">
+                        <canvas id="chartMonthlyBar"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm lg:col-span-1">
+                    <h3 class="text-xs sm:text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center justify-between">
+                        <span>Κατανομή Εξόδων</span>
+                        <i class="fa-solid fa-chart-pie text-slate-400"></i>
+                    </h3>
+                    <div class="relative h-64 sm:h-72 w-full flex items-center justify-center">
+                        <canvas id="chartExpenseDonut"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= VIEW 3: MONTHLY QUICK ENTRY (SINGLE MONTH + ANNUAL EXPENSES SIDE PANEL) ================= -->
+        <section id="view-entry" class="space-y-6 hidden">
+            <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="flex flex-wrap justify-between items-center gap-4 mb-6 border-b border-slate-100 pb-4">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-800">Μηνιαία Καταχώρηση Δεδομένων</h2>
+                        <p class="text-xs text-slate-500">Επιλέξτε μήνα για να δείτε αριστερά την καταχώρηση του τρέχοντος μήνα και δεξιά τα συνολικά ετήσια έξοδα & υπόλοιπα.</p>
+                    </div>
+
+                    <div class="flex items-center flex-wrap gap-2">
+                        <div class="flex items-center space-x-2">
+                            <label class="text-xs font-bold text-slate-600">Μήνας:</label>
+                            <select id="entryMonthSelect" onchange="renderMonthlyEntryForm()" class="bg-slate-50 border border-slate-300 text-slate-800 font-bold text-xs rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-500">
+                            </select>
+                        </div>
+                        <button onclick="copyMonthlyBudgetToActual()" type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl transition flex items-center space-x-1.5 border border-slate-200 active:scale-95" title="Αντιγραφή των τιμών Budget στα πεδία Actual">
+                            <i class="fa-solid fa-copy text-slate-500"></i>
+                            <span>Budget &rarr; Actual</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Live Monthly Summary Bar -->
+                <div id="monthlyEntrySummary" class="bg-slate-900 text-white p-3 sm:p-4 rounded-xl flex flex-wrap justify-between items-center text-xs gap-3 mb-6 shadow-sm">
+                </div>
+
+                <!-- Split Layout: Left Current Month Entry, Right Annual Expenses Summary -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- LEFT SIDE: Current Month Entries -->
+                    <div class="lg:col-span-7 space-y-6">
+                        <div class="flex items-center justify-between border-b pb-2">
+                            <h3 class="text-xs font-extrabold text-emerald-700 uppercase tracking-wider flex items-center">
+                                <i class="fa-solid fa-calendar-day mr-2"></i>
+                                <span>Καταχώρηση Τρέχοντος Μήνα (<span id="currentSelectedMonthLabel">--</span>)</span>
+                            </h3>
+                        </div>
+                        <div id="monthlyEntryContainer" class="space-y-6">
+                            <!-- Sections populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- RIGHT SIDE: Annual Expenses Totals & Balances -->
+                    <div class="lg:col-span-5 space-y-4">
+                        <div class="flex items-center justify-between border-b pb-2">
+                            <h3 class="text-xs font-extrabold text-amber-700 uppercase tracking-wider flex items-center">
+                                <i class="fa-solid fa-chart-pie mr-2"></i>
+                                <span>Σύνολα & Υπόλοιπα Έτους (Ετήσια Έξοδα)</span>
+                            </h3>
+                        </div>
+
+                        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+                            <div class="text-[11px] text-slate-500">
+                                Παρακάτω προβάλλονται τα συγκεντρωτικά σύνολα και το διαθέσιμο υπόλοιπο του έτους αποκλειστικά για την κατηγορία <strong>ΕΤΗΣΙΑ ΕΞΟΔΑ</strong>:
+                            </div>
+
+                            <div id="annualExpensesSummaryContainer" class="space-y-3">
+                                <!-- Populated dynamically by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-slate-200 flex justify-end">
+                    <button onclick="saveMonthlyEntryForm()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow-md transition flex items-center justify-center space-x-2 active:scale-95">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>Αποθήκευση Μήνα</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= VIEW 4: CATEGORY MANAGEMENT ================= -->
+        <section id="view-categories" class="space-y-6 hidden">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm md:col-span-1 space-y-4">
+                    <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Προσθήκη Νέας Κατηγορίας</h3>
+                    <form onsubmit="addNewCategoryItem(event)" class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Τμήμα / Ενότητα</label>
+                            <select id="newCatSection" required class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-medium focus:outline-none focus:border-emerald-500">
+                                <option value="income">ΕΣΟΔΑ (INCOME)</option>
+                                <option value="annual_expenses">ΕΤΗΣΙΑ ΕΞΟΔΑ (ANNUAL EXPENSES)</option>
+                                <option value="monthly_expenses">ΜΗΝΙΑΙΑ ΕΞΟΔΑ (MONTHLY EXPENSES)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Όνομα Κατηγορίας</label>
+                            <input type="text" id="newCatName" required placeholder="π.χ. Συνδρομή Γυμναστηρίου" class="w-full border border-slate-200 rounded-xl p-2.5 text-xs focus:outline-none focus:border-emerald-500">
+                        </div>
+
+                        <button type="submit" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs py-2.5 rounded-xl transition active:scale-95">
+                            <i class="fa-solid fa-plus mr-1"></i> Προσθήκη
+                        </button>
+                    </form>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm md:col-span-2 space-y-4">
+                    <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center justify-between">
+                        <span>Υπάρχουσες Κατηγορίες & Γραμμές</span>
+                        <span id="catTotalBadge" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">--</span>
+                    </h3>
+                    <div id="categoryManagerList" class="space-y-4 max-h-[60vh] overflow-y-auto pr-1"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= VIEW 5: SETTINGS & EXPORT ================= -->
+        <section id="view-settings" class="space-y-6 hidden">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm max-w-2xl mx-auto space-y-6">
+                <div>
+                    <h2 class="text-base font-bold text-slate-800 mb-1">Διαχείριση Δεδομένων & Εξαγωγή</h2>
+                    <p class="text-xs text-slate-500">Όλες οι τιμές μορφοποιούνται αυτόματα σε 0,00 €. Μπορείτε να εξάγετε τα δεδομένα σας σε CSV ή JSON.</p>
+                </div>
+
+                <div class="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-slate-700">Κατάσταση Τοπικής Αποθήκευσης (LocalStorage)</span>
+                        <span id="storageHealthPill" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">Ενεργό & Ασφαλές</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs pt-1 text-slate-600">
+                        <div>Καταχωρημένα Έτη: <strong id="statYearsCount" class="text-slate-800">1</strong></div>
+                        <div>Σύνολο Κατηγοριών: <strong id="statCategoriesCount" class="text-slate-800">--</strong></div>
+                        <div>Τελευταία Αποθήκευση: <strong id="statLastSaved" class="text-slate-800">--</strong></div>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-4 space-y-3">
+                    <h3 class="text-xs font-bold uppercase text-slate-400 tracking-wider">Εξαγωγή (Export)</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button onclick="exportCSV()" class="p-4 border border-slate-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50/50 transition flex items-center space-x-3 text-left group">
+                            <i class="fa-solid fa-file-csv text-3xl text-emerald-600 group-hover:scale-105 transition-transform"></i>
+                            <div>
+                                <div class="font-bold text-xs text-slate-800">Εξαγωγή σε Excel (CSV)</div>
+                                <div class="text-[11px] text-slate-500">Συμβατό με Ελληνικό Excel σε μορφή 0,00 €</div>
+                            </div>
+                        </button>
+
+                        <button onclick="exportJSON()" class="p-4 border border-slate-200 rounded-xl hover:border-blue-500 hover:bg-blue-50/50 transition flex items-center space-x-3 text-left group">
+                            <i class="fa-solid fa-file-code text-3xl text-blue-600 group-hover:scale-105 transition-transform"></i>
+                            <div>
+                                <div class="font-bold text-xs text-slate-800">Εξαγωγή σε JSON</div>
+                                <div class="text-[11px] text-slate-500">Πλήρες αντίγραφο ασφαλείας όλων των ετών</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-4 space-y-3">
+                    <h3 class="text-xs font-bold uppercase text-slate-400 tracking-wider">Εισαγωγή (Import)</h3>
+                    <div class="p-4 border border-slate-200 rounded-xl bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-3">
+                        <span class="text-xs text-slate-600 text-center sm:text-left">Επιλέξτε αρχείο JSON για πλήρη επαναφορά των δεδομένων σας.</span>
+                        <label class="cursor-pointer bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap active:scale-95">
+                            <i class="fa-solid fa-upload mr-1.5"></i> Επιλογή Αρχείου
+                            <input type="file" id="importJsonInput" accept=".json" onchange="importJSON(event)" class="hidden">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-100 pt-4 space-y-2">
+                    <button onclick="clearAllAmounts()" class="w-full py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl text-xs font-bold transition border border-amber-200 active:scale-95 flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-eraser"></i>
+                        <span>Μηδενισμός Όλων των Ποσών (Όλα 0,00 €)</span>
+                    </button>
+
+                    <button onclick="resetAllData()" class="w-full py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition border border-rose-200 active:scale-95 flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-trash-can"></i>
+                        <span>Πλήρης Επαναφορά Αρχικών Κατηγοριών & Μηδενισμός (Reset)</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- CELL EDIT MODAL -->
+    <div id="cellEditModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl relative">
+            <button onclick="closeCellEditModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 id="modalItemTitle" class="text-sm font-bold text-slate-800 mb-1 pr-6 truncate">Επεξεργασία Κελιού</h3>
+            <p id="modalMonthSub" class="text-xs text-emerald-600 font-semibold mb-4">Μήνας: Ιανουάριος</p>
+
+            <form onsubmit="saveCellEditModal(event)" class="space-y-4">
+                <input type="hidden" id="modalItemId">
+                <input type="hidden" id="modalMonthIdx">
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Προϋπολογισμός / Budget (€)</label>
+                    <input type="number" step="0.01" inputmode="decimal" id="modalBudgetVal" placeholder="0,00" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Πραγματικό / Actual (€)</label>
+                    <input type="number" step="0.01" inputmode="decimal" id="modalActualVal" placeholder="0,00" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-bold focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeCellEditModal()" class="px-4 py-2 border border-slate-200 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-50">Ακύρωση</button>
+                    <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition">Αποθήκευση</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- APPLICATION LOGIC JS -->
+    <script>
+        const MONTH_NAMES = [
+            'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
+            'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'
+        ];
+
+        const MONTH_NAMES_GR = [
+            'Ιανουάριος', 'Φεβρουάριος', 'Μάρτιος', 'Απρίλιος', 'Μάιος', 'Ιούνιος',
+            'Ιούλιος', 'Αύγουστος', 'Σεπτέμβριος', 'Οκτώβριος', 'Νοέμβριος', 'Δεκέμβριος'
+        ];
+
+        const DEFAULT_SECTIONS = [
+            {
+                id: 'income',
+                title: 'INCOME (ΕΣΟΔΑ)',
+                type: 'INCOME',
+                items: [
+                    { id: 'inc_1', name: 'Wages Giorgos (Μισθός Γιώργου)' },
+                    { id: 'inc_2', name: 'Wages Eleni (Μισθός Ελένης)' },
+                    { id: 'inc_3', name: 'Rental Income AMPOLI (Ενοίκιο Αμπέλια)' },
+                    { id: 'inc_4', name: 'Rental Income TSIMARI (Ενοίκιο Τσιμάρι)' },
+                    { id: 'inc_5', name: 'Giorgos other income (Άλλα Έσοδα Γιώργου)' },
+                    { id: 'inc_6', name: 'Eleni other income (Άλλα Έσοδα Ελένης)' }
+                ]
+            },
+            {
+                id: 'annual_expenses',
+                title: 'ANNUAL EXPENSES (ΕΤΗΣΙΑ ΕΞΟΔΑ)',
+                type: 'EXPENSE',
+                items: [
+                    { id: 'ann_1', name: 'Car Services (Σέρβις Αυτοκινήτου)' },
+                    { id: 'ann_2', name: 'Christina School Classes (Φροντιστήρια/Σχολείο)' },
+                    { id: 'ann_3', name: 'Water bill AMPOLI (Νερό Αμπέλια)' },
+                    { id: 'ann_4', name: 'Water bill/Deyakoula TSIMARI (Νερό/ΔΕΥΑ Τσιμάρι)' },
+                    { id: 'ann_5', name: 'ENFIA (ΕΝΦΙΑ)' },
+                    { id: 'ann_6', name: 'TAXES for real estate (Φόροι Ακινήτων)' },
+                    { id: 'ann_7', name: 'Internet Home (Internet Σπιτιού)' },
+                    { id: 'ann_8', name: 'Water bill (Λογαριασμός Νερού)' },
+                    { id: 'ann_9', name: 'Fireplace/Wood (Ξύλα Τζακιού)' },
+                    { id: 'ann_10', name: 'Fuel for heating (Πετρέλαιο Θέρμανσης)' },
+                    { id: 'ann_11', name: 'Cooking Gas (Αέριο Μαγειρέματος)' }
+                ]
+            },
+            {
+                id: 'monthly_expenses',
+                title: 'MONTHLY EXPENSES (ΜΗΝΙΑΙΑ ΕΞΟΔΑ)',
+                type: 'EXPENSE',
+                items: [
+                    { id: 'mth_1', name: 'Car Fuel (Καύσιμα)' },
+                    { id: 'mth_2', name: 'Fridge (Ψυγείο / Τρόφιμα)' },
+                    { id: 'mth_3', name: 'Chris Barber/hair dryer (Κομμωτήριο)' },
+                    { id: 'mth_4', name: 'TV (Netflix-Cosmote-Disney)' },
+                    { id: 'mth_5', name: 'House Rent (Ενοίκιο Σπιτιού)' },
+                    { id: 'mth_6', name: 'Groceries (Σούπερ Μάρκετ)' },
+                    { id: 'mth_7', name: 'Loan (Δάνειο)' },
+                    { id: 'mth_8', name: 'Electricity bill (Ρεύμα)' },
+                    { id: 'mth_9', name: 'Gym Giorgos (Γυμναστήριο Γιώργου)' },
+                    { id: 'mth_10', name: 'Mobile bill (Λογαριασμός Κινητής)' },
+                    { id: 'mth_11', name: 'Registration 18-Aug (Εγγραφή / Δίδακτρα)' },
+                    { id: 'mth_12', name: 'Car Insurance (Ασφάλεια Αυτοκινήτου)' },
+                    { id: 'mth_13', name: 'Car License (Τέλη Κυκλοφορίας)' },
+                    { id: 'mth_14', name: 'House Insurance (Ασφάλεια Σπιτιού)' },
+                    { id: 'mth_15', name: 'Giorgos mobile 12-MAY27 (Κινητό Γιώργου)' },
+                    { id: 'mth_16', name: 'Gym Eleni 12-SEP (Γυμναστήριο Ελένης)' },
+                    { id: 'mth_17', name: 'Printer / TV-XE (Εκτυπωτής / TV-XE)' },
+                    { id: 'mth_18', name: 'Kids Allowance (Χαρτζιλίκι Παιδιών)' }
+                ]
+            }
+        ];
+
+        const INITIAL_2026_DATA = {
+            "inc_1": {"0":{"budget":1800,"actual":1800},"1":{"budget":2100,"actual":2100},"2":{"budget":1880,"actual":1880},"3":{"budget":1915,"actual":1915},"4":{"budget":1900,"actual":1900},"5":{"budget":1915,"actual":1915},"6":{"budget":2050,"actual":2050},"7":{"budget":1850,"actual":1850},"8":{"budget":1850,"actual":1850},"9":{"budget":1850,"actual":1850},"10":{"budget":1850,"actual":0},"11":{"budget":1850,"actual":0}},
+            "inc_2": {"0":{"budget":700,"actual":700},"1":{"budget":700,"actual":700},"2":{"budget":700,"actual":700},"3":{"budget":1040,"actual":1040},"4":{"budget":730,"actual":730},"5":{"budget":700,"actual":700},"6":{"budget":700,"actual":0},"7":{"budget":700,"actual":700},"8":{"budget":700,"actual":700},"9":{"budget":0,"actual":0},"10":{"budget":0,"actual":0},"11":{"budget":0,"actual":0}},
+            "inc_3": {"0":{"budget":430,"actual":430},"1":{"budget":430,"actual":430},"2":{"budget":430,"actual":430},"3":{"budget":430,"actual":430},"4":{"budget":430,"actual":430},"5":{"budget":430,"actual":430},"6":{"budget":430,"actual":0},"7":{"budget":430,"actual":430},"8":{"budget":430,"actual":430},"9":{"budget":430,"actual":0},"10":{"budget":430,"actual":0},"11":{"budget":430,"actual":0}},
+            "inc_4": {"0":{"budget":430,"actual":430},"1":{"budget":430,"actual":430},"2":{"budget":430,"actual":430},"3":{"budget":430,"actual":430},"4":{"budget":430,"actual":430},"5":{"budget":430,"actual":430},"6":{"budget":430,"actual":430},"7":{"budget":430,"actual":430},"8":{"budget":430,"actual":430},"9":{"budget":430,"actual":430},"10":{"budget":430,"actual":0},"11":{"budget":430,"actual":0}},
+            "inc_5": {"0":{"budget":250,"actual":250},"1":{"budget":0,"actual":0},"2":{"budget":0,"actual":0},"3":{"budget":0,"actual":0},"4":{"budget":0,"actual":0},"5":{"budget":0,"actual":0},"6":{"budget":0,"actual":0},"7":{"budget":0,"actual":0},"8":{"budget":0,"actual":0},"9":{"budget":0,"actual":0},"10":{"budget":0,"actual":0},"11":{"budget":0,"actual":0}},
+            "inc_6": {"0":{"budget":250,"actual":250},"1":{"budget":250,"actual":250},"2":{"budget":250,"actual":250},"3":{"budget":250,"actual":250},"4":{"budget":250,"actual":250},"5":{"budget":250,"actual":250},"6":{"budget":250,"actual":0},"7":{"budget":250,"actual":250},"8":{"budget":250,"actual":250},"9":{"budget":250,"actual":0},"10":{"budget":250,"actual":100},"11":{"budget":250,"actual":0}},
+            "ann_1": {"0":{"budget":260,"actual":40},"1":{"budget":100,"actual":100},"2":{"budget":30,"actual":180},"3":{"budget":145,"actual":160},"4":{"budget":50,"actual":0},"5":{"budget":50,"actual":110},"6":{"budget":149,"actual":0},"7":{"budget":50,"actual":0},"8":{"budget":50,"actual":200},"9":{"budget":50,"actual":0},"10":{"budget":0,"actual":0},"11":{"budget":0,"actual":0}},
+            "ann_2": {"0":{"budget":227,"actual":85},"1":{"budget":25,"actual":0},"2":{"budget":95,"actual":120},"3":{"budget":0,"actual":90},"4":{"budget":95,"actual":100},"5":{"budget":55,"actual":102},"6":{"budget":55,"actual":55},"7":{"budget":0,"actual":0},"8":{"budget":0,"actual":0},"9":{"budget":0,"actual":0},"10":{"budget":0,"actual":0},"11":{"budget":0,"actual":0}},
+            "ann_3": {"0":{"budget":45,"actual":0},"1":{"budget":10,"actual":25},"2":{"budget":10,"actual":0},"3":{"budget":10,"actual":0},"4":{"budget":10,"actual":0},"5":{"budget":10,"actual":20},"6":{"budget":10,"actual":0},"7":{"budget":10,"actual":0},"8":{"budget":10,"actual":0},"9":{"budget":10,"actual":32},"10":{"budget":0,"actual":0},"11":{"budget":0,"actual":0}},
+            "ann_4": {"0":{"budget":42,"actual":0},"1":{"budget":25,"actual":35},"2":{"budget":25,"actual":0},"3":{"budget":25,"actual":0},"4":{"budget":25,"actual":0},"5":{"budget":25,"actual":27},"6":{"budget":25,"actual":0},"7":{"budget":25,"actual":0},"8":{"budget":25,"actual":140},"9":{"budget":25,"actual":27},"10":{"budget":0,"actual":0},"11":{"budget":0,"actual":0}},
+            "ann_5": {"0":{"budget":146,"actual":0},"1":{"budget":20,"actual":0},"2":{"budget":20,"actual":0},"3":{"budget":20,"actual":203},"4":{"budget":20,"actual":0},"5":{"budget":20,"actual":0},"6":{"budget":20,"actual":0},"7":{"budget":20,"actual":0},"8":{"budget":20,"actual":0},"9":{"budget":20,"actual":0},"10":{"budget":0,"actual":0},"11":{"budget":0,"actual":0}},
+            "ann_6": {"0":{"budget":1173,"actual":122},"1":{"budget":120,"actual":275},"2":{"budget":120,"actual":0},"3":{"budget":120,"actual":0},"4":{"budget":120,"actual":0},"5":{"budget":120,"actual":0},"6":{"budget":120,"actual":516.54},"7":{"budget":120,"actual":0},"8":{"budget":120,"actual":0},"9":{"budget":120,"actual":0},"10":{"budget":0,"actual":0},"11":{"budget":0,"actual":0}},
+            "ann_7": {"0":{"budget":68,"actual":0},"1":{"budget":17,"actual":0},"2":{"budget":17,"actual":98},"3":{"budget":17,"actual":0},"4":{"budget":17,"actual":0},"5":{"budget":17,"actual":0},"6":{"budget":17,"actual":0},"7":{"budget":17,"actual":0},"8":{"budget":17,"actual":98},"9":{"budget":17,"actual":0},"10":{"budget":0,"actual":0},"11":{"budget":0,"actual":0}},
+            "ann_8": {"0":{"budget":157,"actual":130},"1":{"budget":30,"actual":0},"2":{"budget":30,"actual":0},"3":{"budget":30,"actual":0},"4":{"budget":30,"actual":0},"5":{"budget":30,"actual":0},"6":{"budget":30,"actual":120},"7":{"budget":30,"actual":0},"8":{"budget":30,"actual":121.5},"9":{"budget":30,"actual":0},"10":{"budget":0,"actual":0},"11":{"budget":0,"actual":0}},
+            "ann_9": {"0":{"budget":0,"actual":0},"1":{"budget":0,"actual":0},"2":{"budget":0,"actual":0},"3":{"budget":0,"actual":0},"4":{"budget":0,"actual":0},"5":{"budget":0,"actual":0},"6":{"budget":0,"actual":0},"7":{"budget":0,"actual":0},"8":{"budget":0,"actual":0},"9":{"budget":0,"actual":0},"10":{"budget":0,"actual":0},"11":{"budget":0,"actual":0}},
+            "ann_10": {"0":{"budget":0,"actual":0},"1":{"budget":0,"actual":0},"2":{"budget":0,"actual":0},"3":{"budget":0,"actual":0},"4":{"budget":0,"actual":0},"5":{"budget":0,"actual":0},"6":{"budget":0,"actual":0},"7":{"budget":50,"actual":0},"8":{"budget":50,"actual":0},"9":{"budget":50,"actual":0},"10":{"budget":0,"actual":0},"11":{"budget":0,"actual":0}},
+            "ann_11": {"0":{"budget":75,"actual":50},"1":{"budget":25,"actual":0},"2":{"budget":25,"actual":50},"3":{"budget":25,"actual":0},"4":{"budget":25,"actual":56},"5":{"budget":25,"actual":0},"6":{"budget":25,"actual":44},"7":{"budget":25,"actual":0},"8":{"budget":25,"actual":75},"9":{"budget":25,"actual":0},"10":{"budget":0,"actual":0},"11":{"budget":0,"actual":0}},
+            "mth_1": {"0":{"budget":250,"actual":165},"1":{"budget":250,"actual":170},"2":{"budget":200,"actual":200},"3":{"budget":250,"actual":190},"4":{"budget":250,"actual":250},"5":{"budget":250,"actual":250},"6":{"budget":250,"actual":310},"7":{"budget":250,"actual":325},"8":{"budget":250,"actual":250},"9":{"budget":250,"actual":280},"10":{"budget":300,"actual":0},"11":{"budget":300,"actual":0}},
+            "mth_2": {"0":{"budget":25,"actual":25},"1":{"budget":25,"actual":25},"2":{"budget":30,"actual":30},"3":{"budget":30,"actual":30},"4":{"budget":30,"actual":30},"5":{"budget":30,"actual":30},"6":{"budget":30,"actual":30},"7":{"budget":30,"actual":30},"8":{"budget":30,"actual":30},"9":{"budget":30,"actual":30},"10":{"budget":0,"actual":0},"11":{"budget":0,"actual":0}},
+            "mth_3": {"0":{"budget":65,"actual":65},"1":{"budget":65,"actual":65},"2":{"budget":65,"actual":65},"3":{"budget":65,"actual":65},"4":{"budget":65,"actual":65},"5":{"budget":65,"actual":65},"6":{"budget":65,"actual":65},"7":{"budget":0,"actual":0},"8":{"budget":0,"actual":0},"9":{"budget":45,"actual":45},"10":{"budget":45,"actual":0},"11":{"budget":45,"actual":0}},
+            "mth_4": {"0":{"budget":25,"actual":25},"1":{"budget":25,"actual":25},"2":{"budget":25,"actual":25},"3":{"budget":25,"actual":25},"4":{"budget":25,"actual":25},"5":{"budget":25,"actual":25},"6":{"budget":25,"actual":25},"7":{"budget":25,"actual":25},"8":{"budget":25,"actual":25},"9":{"budget":25,"actual":25},"10":{"budget":25,"actual":0},"11":{"budget":25,"actual":0}},
+            "mth_5": {"0":{"budget":550,"actual":550},"1":{"budget":550,"actual":550},"2":{"budget":550,"actual":550},"3":{"budget":550,"actual":550},"4":{"budget":550,"actual":550},"5":{"budget":550,"actual":550},"6":{"budget":550,"actual":550},"7":{"budget":550,"actual":550},"8":{"budget":550,"actual":550},"9":{"budget":550,"actual":550},"10":{"budget":550,"actual":0},"11":{"budget":550,"actual":0}},
+            "mth_6": {"0":{"budget":800,"actual":800},"1":{"budget":800,"actual":880},"2":{"budget":900,"actual":870},"3":{"budget":900,"actual":910},"4":{"budget":900,"actual":875},"5":{"budget":900,"actual":715},"6":{"budget":900,"actual":793},"7":{"budget":900,"actual":794},"8":{"budget":900,"actual":900},"9":{"budget":900,"actual":810},"10":{"budget":900,"actual":0},"11":{"budget":900,"actual":0}},
+            "mth_7": {"0":{"budget":170,"actual":170},"1":{"budget":170,"actual":170},"2":{"budget":170,"actual":170},"3":{"budget":170,"actual":170},"4":{"budget":170,"actual":170},"5":{"budget":170,"actual":170},"6":{"budget":170,"actual":170},"7":{"budget":170,"actual":170},"8":{"budget":170,"actual":170},"9":{"budget":170,"actual":170},"10":{"budget":170,"actual":0},"11":{"budget":170,"actual":0}},
+            "mth_8": {"0":{"budget":80,"actual":80},"1":{"budget":90,"actual":90},"2":{"budget":90,"actual":90},"3":{"budget":90,"actual":90},"4":{"budget":0,"actual":0},"5":{"budget":62,"actual":62},"6":{"budget":90,"actual":90},"7":{"budget":90,"actual":90},"8":{"budget":90,"actual":90},"9":{"budget":90,"actual":90},"10":{"budget":90,"actual":0},"11":{"budget":90,"actual":0}},
+            "mth_9": {"0":{"budget":25,"actual":25},"1":{"budget":25,"actual":25},"2":{"budget":25,"actual":25},"3":{"budget":25,"actual":25},"4":{"budget":25,"actual":25},"5":{"budget":25,"actual":25},"6":{"budget":27,"actual":27},"7":{"budget":27,"actual":27},"8":{"budget":27,"actual":27},"9":{"budget":27,"actual":27},"10":{"budget":27,"actual":0},"11":{"budget":27,"actual":0}},
+            "mth_10": {"0":{"budget":80,"actual":80},"1":{"budget":80,"actual":80},"2":{"budget":80,"actual":80},"3":{"budget":80,"actual":80},"4":{"budget":80,"actual":80},"5":{"budget":80,"actual":80},"6":{"budget":80,"actual":80},"7":{"budget":90,"actual":90},"8":{"budget":90,"actual":90},"9":{"budget":90,"actual":90},"10":{"budget":90,"actual":0},"11":{"budget":90,"actual":0}},
+            "mth_11": {"0":{"budget":300,"actual":300},"1":{"budget":300,"actual":300},"2":{"budget":300,"actual":300},"3":{"budget":300,"actual":300},"4":{"budget":300,"actual":300},"5":{"budget":450,"actual":450},"6":{"budget":0,"actual":0},"7":{"budget":0,"actual":0},"8":{"budget":250,"actual":250},"9":{"budget":250,"actual":250},"10":{"budget":250,"actual":0},"11":{"budget":250,"actual":0}},
+            "mth_12": {"0":{"budget":36,"actual":36},"1":{"budget":36,"actual":36},"2":{"budget":36,"actual":36},"3":{"budget":36,"actual":36},"4":{"budget":36,"actual":36},"5":{"budget":36,"actual":36},"6":{"budget":36,"actual":36},"7":{"budget":36,"actual":36},"8":{"budget":36,"actual":36},"9":{"budget":36,"actual":36},"10":{"budget":36,"actual":0},"11":{"budget":36,"actual":0}},
+            "mth_13": {"0":{"budget":36,"actual":36},"1":{"budget":36,"actual":36},"2":{"budget":36,"actual":36},"3":{"budget":36,"actual":36},"4":{"budget":36,"actual":36},"5":{"budget":36,"actual":36},"6":{"budget":36,"actual":36},"7":{"budget":36,"actual":36},"8":{"budget":36,"actual":36},"9":{"budget":36,"actual":36},"10":{"budget":36,"actual":0},"11":{"budget":36,"actual":0}},
+            "mth_14": {"0":{"budget":25,"actual":25},"1":{"budget":25,"actual":25},"2":{"budget":25,"actual":25},"3":{"budget":25,"actual":25},"4":{"budget":25,"actual":25},"5":{"budget":25,"actual":25},"6":{"budget":25,"actual":25},"7":{"budget":25,"actual":25},"8":{"budget":25,"actual":25},"9":{"budget":25,"actual":25},"10":{"budget":25,"actual":0},"11":{"budget":25,"actual":0}},
+            "mth_15": {"0":{"budget":0,"actual":0},"1":{"budget":0,"actual":0},"2":{"budget":0,"actual":0},"3":{"budget":0,"actual":0},"4":{"budget":0,"actual":0},"5":{"budget":23,"actual":23},"6":{"budget":23,"actual":23},"7":{"budget":23,"actual":23},"8":{"budget":23,"actual":23},"9":{"budget":23,"actual":23},"10":{"budget":23,"actual":0},"11":{"budget":23,"actual":0}},
+            "mth_16": {"0":{"budget":22,"actual":22},"1":{"budget":22,"actual":22},"2":{"budget":22,"actual":22},"3":{"budget":22,"actual":22},"4":{"budget":22,"actual":22},"5":{"budget":22,"actual":22},"6":{"budget":22,"actual":22},"7":{"budget":22,"actual":22},"8":{"budget":17,"actual":17},"9":{"budget":17,"actual":17},"10":{"budget":17,"actual":0},"11":{"budget":17,"actual":0}},
+            "mth_17": {"0":{"budget":12,"actual":12},"1":{"budget":12,"actual":12},"2":{"budget":12,"actual":12},"3":{"budget":12,"actual":12},"4":{"budget":0,"actual":0},"5":{"budget":0,"actual":0},"6":{"budget":0,"actual":20},"7":{"budget":15,"actual":15},"8":{"budget":15,"actual":15},"9":{"budget":15,"actual":15},"10":{"budget":15,"actual":0},"11":{"budget":15,"actual":0}},
+            "mth_18": {"0":{"budget":150,"actual":150},"1":{"budget":150,"actual":150},"2":{"budget":150,"actual":150},"3":{"budget":150,"actual":150},"4":{"budget":150,"actual":150},"5":{"budget":120,"actual":120},"6":{"budget":150,"actual":150},"7":{"budget":100,"actual":100},"8":{"budget":100,"actual":100},"9":{"budget":100,"actual":100},"10":{"budget":100,"actual":0},"11":{"budget":100,"actual":0}}
+        };
+
+        let appState = {
+            currentYear: 2026,
+            displayMode: 'ALL',
+            sections: DEFAULT_SECTIONS,
+            budgetData: {
+                2026: INITIAL_2026_DATA
+            },
+            lastSaved: null
+        };
+
+        let barChartInstance = null;
+        let donutChartInstance = null;
+
+        window.onload = function() {
+            loadFromStorage();
+            initDefaultYearData(appState.currentYear);
+            renderMatrixHeader();
+            renderMatrixTable();
+            renderDashboard();
+            initEntryMonthSelect();
+            renderMonthlyEntryForm();
+            renderCategoryManager();
+            updateStorageInfoDisplay();
+
+            window.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') closeCellEditModal();
+            });
+        };
+
+        function saveToStorage() {
+            try {
+                appState.lastSaved = new Date().toISOString();
+                localStorage.setItem('home_budget_spreadsheet_data', JSON.stringify({
+                    version: '2.2_structured',
+                    lastSaved: appState.lastSaved,
+                    currentYear: appState.currentYear,
+                    sections: appState.sections,
+                    budgetData: appState.budgetData
+                }));
+                updateStorageInfoDisplay();
+            } catch(e) {
+                console.error("Storage error:", e);
+                showToast('Σφάλμα αποθήκευσης στο LocalStorage', 'error');
+            }
+        }
+
+        function loadFromStorage() {
+            try {
+                const saved = localStorage.getItem('home_budget_spreadsheet_data');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length > 0) {
+                        appState.sections = parsed.sections;
+                    }
+                    if (parsed.budgetData && typeof parsed.budgetData === 'object' && Object.keys(parsed.budgetData).length > 0) {
+                        appState.budgetData = parsed.budgetData;
+                    }
+                    if (parsed.currentYear && Number(parsed.currentYear)) {
+                        appState.currentYear = Number(parsed.currentYear);
+                    }
+                    appState.lastSaved = parsed.lastSaved || null;
+                }
+            } catch(e) {
+                console.error("Storage load error:", e);
+                showToast('Αδυναμία φόρτωσης αποθηκευμένων δεδομένων', 'error');
+            }
+        }
+
+        function ensureYearData(year) {
+            if (!appState.budgetData[year]) {
+                appState.budgetData[year] = {};
+            }
+            appState.sections.forEach(sec => {
+                sec.items.forEach(item => {
+                    if (!appState.budgetData[year][item.id]) {
+                        appState.budgetData[year][item.id] = {};
+                    }
+                    for (let m = 0; m < 12; m++) {
+                        if (!appState.budgetData[year][item.id][m]) {
+                            appState.budgetData[year][item.id][m] = { budget: 0, actual: 0 };
+                        }
+                    }
+                });
+            });
+        }
+
+        function initDefaultYearData(year) {
+            if (!appState.budgetData[year]) {
+                if (year === 2026 && typeof INITIAL_2026_DATA !== 'undefined') {
+                    appState.budgetData[2026] = JSON.parse(JSON.stringify(INITIAL_2026_DATA));
+                } else {
+                    appState.budgetData[year] = {};
+                    appState.sections.forEach(sec => {
+                        sec.items.forEach(item => {
+                            appState.budgetData[year][item.id] = {};
+                            for (let m = 0; m < 12; m++) {
+                                appState.budgetData[year][item.id][m] = { budget: 0, actual: 0 };
+                            }
+                        });
+                    });
+                }
+            } else {
+                ensureYearData(year);
+            }
+        }
+
+        function clearAllAmounts() {
+            if (confirm('Θέλετε να μηδενιστούν όλες οι τιμές (0,00 €) για όλα τα έτη και τις κατηγορίες;')) {
+                Object.keys(appState.budgetData).forEach(y => {
+                    appState.sections.forEach(sec => {
+                        sec.items.forEach(item => {
+                            appState.budgetData[y][item.id] = {};
+                            for (let m = 0; m < 12; m++) {
+                                appState.budgetData[y][item.id][m] = { budget: 0, actual: 0 };
+                            }
+                        });
+                    });
+                });
+                saveToStorage();
+                renderMatrixTable();
+                renderDashboard();
+                renderMonthlyEntryForm();
+                updateStorageInfoDisplay();
+                showToast('Όλα τα ποσά μηδενίστηκαν επιτυχώς σε 0,00 €!', 'success');
+            }
+        }
+
+        function changeYear(delta) {
+            appState.currentYear += delta;
+            document.getElementById('currentYearDisplay').innerText = appState.currentYear;
+            initDefaultYearData(appState.currentYear);
+            renderMatrixHeader();
+            renderMatrixTable();
+            renderDashboard();
+            renderMonthlyEntryForm();
+            updateStorageInfoDisplay();
+            saveToStorage();
+        }
+
+        function renderMatrixHeader() {
+            const headerRow = document.getElementById('matrixHeaderRow');
+            headerRow.innerHTML = `
+                <th class="p-3 font-bold sticky-col-left bg-slate-900 w-36 sm:w-56 min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px] shadow-r border-b border-slate-800 truncate">
+                    ΚΑΤΗΓΟΡΙΕΣ / ΜΗΝΕΣ
+                </th>
+            `;
+
+            const curCalendarMonth = new Date().getMonth();
+            const curCalendarYear = new Date().getFullYear();
+            const isAllMode = appState.displayMode === 'ALL';
+            const colMinWidth = isAllMode ? 'min-w-[150px] sm:min-w-[165px]' : 'min-w-[105px] sm:min-w-[120px]';
+
+            MONTH_NAMES.forEach((m, idx) => {
+                const isCurrentMonth = (idx === curCalendarMonth && appState.currentYear === curCalendarYear);
+                const th = document.createElement('th');
+                th.id = `th_month_${idx}`;
+                th.className = `p-2 text-center border-b border-slate-800 ${colMinWidth} transition ${isCurrentMonth ? 'bg-slate-800/90 ring-1 ring-inset ring-emerald-500/50' : ''}`;
+                th.innerHTML = `
+                    <div class="flex items-center justify-center space-x-1">
+                        <span class="font-bold text-emerald-400 text-xs">${m}</span>
+                        ${isCurrentMonth ? '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" title="Τρέχων Ημερολογιακός Μήνας"></span>' : ''}
+                    </div>
+                    ${isAllMode ? '<div class="grid grid-cols-3 text-[9px] text-slate-400 mt-0.5"><span class="text-blue-300">Bud</span><span class="text-emerald-300">Act</span><span>Diff</span></div>' : ''}
+                `;
+                headerRow.appendChild(th);
+            });
+
+            const totalTh = document.createElement('th');
+            const totalMinWidth = isAllMode ? 'min-w-[160px] sm:min-w-[180px]' : 'min-w-[110px] sm:min-w-[130px]';
+            totalTh.className = `p-2 text-center bg-slate-800 border-b border-slate-700 ${totalMinWidth}`;
+            totalTh.innerHTML = `
+                <div class="font-bold text-amber-400 text-xs">ΣΥΝΟΛΟ ΕΤΟΥΣ</div>
+                ${isAllMode ? '<div class="grid grid-cols-3 text-[9px] text-slate-300 mt-0.5"><span>Bud</span><span>Act</span><span>Diff</span></div>' : ''}
+            `;
+            headerRow.appendChild(totalTh);
+        }
+
+        function scrollToCurrentMonth() {
+            const curMonthIdx = new Date().getMonth();
+            const tableContainer = document.querySelector('#view-matrix .overflow-x-auto');
+            const targetTh = document.getElementById(`th_month_${curMonthIdx}`);
+            if (tableContainer && targetTh) {
+                const leftPos = targetTh.offsetLeft - 150;
+                tableContainer.scrollTo({ left: Math.max(0, leftPos), behavior: 'smooth' });
+                showToast(`Μετάβαση στον μήνα ${MONTH_NAMES_GR[curMonthIdx]}`, 'info');
+            }
+        }
+
+        function toggleMatrixDisplay(mode) {
+            appState.displayMode = mode;
+            ['btnDispAll', 'btnDispAct', 'btnDispBud'].forEach(id => {
+                document.getElementById(id).className = 'px-2.5 py-1.5 text-xs rounded-lg transition font-medium bg-slate-100 text-slate-600 hover:bg-slate-200';
+            });
+
+            if (mode === 'ALL') document.getElementById('btnDispAll').className = 'px-2.5 py-1.5 text-xs rounded-lg transition font-bold bg-slate-800 text-white shadow-sm';
+            if (mode === 'ACTUAL') document.getElementById('btnDispAct').className = 'px-2.5 py-1.5 text-xs rounded-lg transition font-bold bg-slate-800 text-white shadow-sm';
+            if (mode === 'BUDGET') document.getElementById('btnDispBud').className = 'px-2.5 py-1.5 text-xs rounded-lg transition font-bold bg-slate-800 text-white shadow-sm';
+
+            renderMatrixHeader();
+            renderMatrixTable();
+        }
+
+        function renderMatrixTable() {
+            const tbody = document.getElementById('matrixTableBody');
+            tbody.innerHTML = '';
+
+            const year = appState.currentYear;
+            const yData = appState.budgetData[year] || {};
+
+            const getVal = (itemId, monthIdx) => {
+                if (yData[itemId] && yData[itemId][monthIdx]) {
+                    return yData[itemId][monthIdx];
+                }
+                return { budget: 0, actual: 0 };
+            };
+
+            const sectionTotals = {};
+
+            appState.sections.forEach(sec => {
+                sectionTotals[sec.id] = Array.from({length: 12}, () => ({ budget: 0, actual: 0 }));
+
+                const secHeaderTr = document.createElement('tr');
+                secHeaderTr.className = sec.type === 'INCOME' ? 'bg-emerald-800 text-white font-bold' : 'bg-slate-800 text-white font-bold';
+                
+                let secHtml = `<td class="p-2.5 sticky-col-left ${sec.type === 'INCOME' ? 'bg-emerald-800' : 'bg-slate-800'} shadow-r truncate w-36 sm:w-56 min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px]" title="${sec.title}">${sec.title}</td>`;
+                
+                for (let m = 0; m < 12; m++) {
+                    secHtml += `<td class="p-2 text-center text-[10px] text-slate-300">--</td>`;
+                }
+                secHtml += `<td class="p-2 text-center text-[10px] text-slate-300">--</td>`;
+                secHeaderTr.innerHTML = secHtml;
+                tbody.appendChild(secHeaderTr);
+
+                sec.items.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+
+                    let rowHtml = `<td class="p-2 sm:p-2.5 font-medium text-slate-700 sticky-col-left bg-white shadow-r truncate w-36 sm:w-56 min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px]" title="${item.name}">${item.name}</td>`;
+
+                    let itemYearBudget = 0;
+                    let itemYearActual = 0;
+
+                    for (let m = 0; m < 12; m++) {
+                        const cell = getVal(item.id, m);
+                        itemYearBudget += cell.budget;
+                        itemYearActual += cell.actual;
+
+                        sectionTotals[sec.id][m].budget += cell.budget;
+                        sectionTotals[sec.id][m].actual += cell.actual;
+
+                        const diff = sec.type === 'INCOME' ? (cell.actual - cell.budget) : (cell.budget - cell.actual);
+                        
+                        rowHtml += `<td onclick="openCellEditModal('${item.id}', ${m}, '${escapeHtml(item.name)}')" class="p-1 text-center cursor-pointer hover:bg-emerald-50 transition border-r border-slate-100 select-none" title="Κλικ για επεξεργασία: ${item.name} (${MONTH_NAMES_GR[m]})">
+                            ${renderCellContent(cell.budget, cell.actual, diff, sec.type)}
+                        </td>`;
+                    }
+
+                    const yearDiff = sec.type === 'INCOME' ? (itemYearActual - itemYearBudget) : (itemYearBudget - itemYearActual);
+                    rowHtml += `<td class="p-1.5 text-center font-bold bg-slate-50">
+                        ${renderCellContent(itemYearBudget, itemYearActual, yearDiff, sec.type)}
+                    </td>`;
+
+                    tr.innerHTML = rowHtml;
+                    tbody.appendChild(tr);
+                });
+
+                const subTr = document.createElement('tr');
+                subTr.className = 'bg-slate-100 font-bold border-b-2 border-slate-300 text-slate-800';
+                let subHtml = `<td class="p-2 sm:p-2.5 sticky-col-left bg-slate-100 shadow-r truncate w-36 sm:w-56 min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px]" title="ΣΥΝΟΛΟ ${sec.title}">ΣΥΝΟΛΟ ${sec.title}</td>`;
+
+                let secYearBudget = 0;
+                let secYearActual = 0;
+
+                for (let m = 0; m < 12; m++) {
+                    const bVal = sectionTotals[sec.id][m].budget;
+                    const aVal = sectionTotals[sec.id][m].actual;
+                    secYearBudget += bVal;
+                    secYearActual += aVal;
+
+                    const diff = sec.type === 'INCOME' ? (aVal - bVal) : (bVal - aVal);
+                    subHtml += `<td class="p-1.5 text-center border-r border-slate-200">${renderCellContent(bVal, aVal, diff, sec.type)}</td>`;
+                }
+
+                const secYearDiff = sec.type === 'INCOME' ? (secYearActual - secYearBudget) : (secYearBudget - secYearActual);
+                subHtml += `<td class="p-1.5 text-center bg-slate-200 font-bold">${renderCellContent(secYearBudget, secYearActual, secYearDiff, sec.type)}</td>`;
+
+                subTr.innerHTML = subHtml;
+                tbody.appendChild(subTr);
+            });
+
+            renderGrandTotalsRow(tbody, sectionTotals);
+        }
+
+        function renderGrandTotalsRow(tbody, sectionTotals) {
+            const netTr = document.createElement('tr');
+            netTr.className = 'bg-slate-900 text-white font-extrabold text-xs shadow-lg';
+
+            let netHtml = `<td class="p-2 sm:p-3 sticky-col-left bg-slate-900 shadow-r text-amber-400 truncate w-36 sm:w-56 min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px]" title="NET (Income - Expenses)">NET (Income - Expenses)</td>`;
+
+            let yearNetBudget = 0;
+            let yearNetActual = 0;
+
+            for (let m = 0; m < 12; m++) {
+                const incBud = sectionTotals['income'] ? sectionTotals['income'][m].budget : 0;
+                const incAct = sectionTotals['income'] ? sectionTotals['income'][m].actual : 0;
+
+                const annBud = sectionTotals['annual_expenses'] ? sectionTotals['annual_expenses'][m].budget : 0;
+                const annAct = sectionTotals['annual_expenses'] ? sectionTotals['annual_expenses'][m].actual : 0;
+
+                const mthBud = sectionTotals['monthly_expenses'] ? sectionTotals['monthly_expenses'][m].budget : 0;
+                const mthAct = sectionTotals['monthly_expenses'] ? sectionTotals['monthly_expenses'][m].actual : 0;
+
+                const netBud = incBud - (annBud + mthBud);
+                const netAct = incAct - (annAct + mthAct);
+
+                yearNetBudget += netBud;
+                yearNetActual += netAct;
+
+                const diff = netAct - netBud;
+
+                netHtml += `<td class="p-2 text-center border-r border-slate-800">
+                    ${renderCellContent(netBud, netAct, diff, 'NET')}
+                </td>`;
+            }
+
+            const yearNetDiff = yearNetActual - yearNetBudget;
+            netHtml += `<td class="p-2 text-center bg-slate-800 text-amber-400 font-bold">
+                ${renderCellContent(yearNetBudget, yearNetActual, yearNetDiff, 'NET')}
+            </td>`;
+
+            netTr.innerHTML = netHtml;
+            tbody.appendChild(netTr);
+        }
+
+        function renderCellContent(budget, actual, diff, type) {
+            const mode = appState.displayMode;
+            
+            if (mode === 'ACTUAL') {
+                return `<span class="font-semibold text-slate-800 whitespace-nowrap">${formatCurrency(actual)}</span>`;
+            }
+            if (mode === 'BUDGET') {
+                return `<span class="font-semibold text-blue-600 whitespace-nowrap">${formatCurrency(budget)}</span>`;
+            }
+
+            let diffColor = 'text-emerald-600';
+            if (diff < 0) diffColor = 'text-rose-600';
+            else if (diff === 0) diffColor = 'text-slate-400';
+
+            return `
+                <div class="grid grid-cols-3 gap-0.5 text-[10px] items-center">
+                    <span class="text-blue-600 font-medium whitespace-nowrap">${formatCurrency(budget)}</span>
+                    <span class="text-slate-800 font-bold whitespace-nowrap">${formatCurrency(actual)}</span>
+                    <span class="${diffColor} font-bold whitespace-nowrap">${formatCurrency(diff)}</span>
+                </div>
+            `;
+        }
+
+        function renderDashboard() {
+            const year = appState.currentYear;
+            const yData = appState.budgetData[year] || {};
+
+            let totalIncome = 0;
+            let totalExpenses = 0;
+
+            const monthlyIncome = Array(12).fill(0);
+            const monthlyExpenses = Array(12).fill(0);
+
+            appState.sections.forEach(sec => {
+                sec.items.forEach(item => {
+                    for (let m = 0; m < 12; m++) {
+                        const cell = (yData[item.id] && yData[item.id][m]) ? yData[item.id][m] : { actual: 0 };
+                        if (sec.type === 'INCOME') {
+                            totalIncome += cell.actual;
+                            monthlyIncome[m] += cell.actual;
+                        } else {
+                            totalExpenses += cell.actual;
+                            monthlyExpenses[m] += cell.actual;
+                        }
+                    }
+                });
+            });
+
+            const netBalance = totalIncome - totalExpenses;
+            const savingsRate = totalIncome > 0 ? Math.max(0, Math.round((netBalance / totalIncome) * 100)) : 0;
+
+            document.getElementById('kpiTotalIncome').innerText = formatCurrency(totalIncome);
+            document.getElementById('kpiTotalExpenses').innerText = formatCurrency(totalExpenses);
+            
+            const netEl = document.getElementById('kpiNetBalance');
+            netEl.innerText = formatCurrency(netBalance);
+            netEl.className = netBalance < 0 ? 'text-lg sm:text-2xl font-bold text-rose-600' : 'text-lg sm:text-2xl font-bold text-slate-800';
+
+            document.getElementById('kpiSavingsRate').innerText = `${savingsRate}%`;
+            document.getElementById('kpiSavingsRateBar').style.width = `${Math.min(savingsRate, 100)}%`;
+
+            renderBarChart(monthlyIncome, monthlyExpenses);
+            renderDonutChart();
+        }
+
+        function renderBarChart(incomeArr, expenseArr) {
+            const ctx = document.getElementById('chartMonthlyBar').getContext('2d');
+            if (barChartInstance) barChartInstance.destroy();
+
+            barChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: MONTH_NAMES,
+                    datasets: [
+                        { label: 'Έσοδα (€)', data: incomeArr, backgroundColor: '#10b981', borderRadius: 4 },
+                        { label: 'Έξοδα (€)', data: expenseArr, backgroundColor: '#f43f5e', borderRadius: 4 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11, family: 'Inter' } } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.dataset.label}: ${formatCurrency(context.raw)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                font: { size: 10 },
+                                callback: function(value) { return formatCurrency(value); }
+                            }
+                        },
+                        x: { ticks: { font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        function renderDonutChart() {
+            const year = appState.currentYear;
+            const yData = appState.budgetData[year] || {};
+
+            let annualTotal = 0;
+            let monthlyTotal = 0;
+
+            appState.sections.forEach(sec => {
+                if (sec.type === 'EXPENSE') {
+                    sec.items.forEach(item => {
+                        for (let m = 0; m < 12; m++) {
+                            const cell = (yData[item.id] && yData[item.id][m]) ? yData[item.id][m] : { actual: 0 };
+                            if (sec.id === 'annual_expenses') annualTotal += cell.actual;
+                            if (sec.id === 'monthly_expenses') monthlyTotal += cell.actual;
+                        }
+                    });
+                }
+            });
+
+            const ctx = document.getElementById('chartExpenseDonut').getContext('2d');
+            if (donutChartInstance) donutChartInstance.destroy();
+
+            donutChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Ετήσια Έξοδα', 'Μηνιαία Έξοδα'],
+                    datasets: [{
+                        data: [annualTotal, monthlyTotal],
+                        backgroundColor: ['#f59e0b', '#ef4444']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11, family: 'Inter' } } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.label}: ${formatCurrency(context.raw)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initEntryMonthSelect() {
+            const select = document.getElementById('entryMonthSelect');
+            select.innerHTML = '';
+            MONTH_NAMES_GR.forEach((m, idx) => {
+                select.innerHTML += `<option value="${idx}">${m}</option>`;
+            });
+            select.value = new Date().getMonth();
+        }
+
+        function renderMonthlyEntryForm() {
+            const mIdx = parseInt(document.getElementById('entryMonthSelect').value);
+            const container = document.getElementById('monthlyEntryContainer');
+            container.innerHTML = '';
+
+            const lbl = document.getElementById('currentSelectedMonthLabel');
+            if (lbl) lbl.innerText = MONTH_NAMES_GR[mIdx];
+
+            const year = appState.currentYear;
+            ensureYearData(year);
+            const yData = appState.budgetData[year];
+
+            appState.sections.forEach(sec => {
+                const secCard = document.createElement('div');
+                secCard.className = 'border border-slate-200 rounded-2xl overflow-hidden bg-slate-50/50 shadow-sm';
+
+                let secHtml = `
+                    <div class="p-3 bg-slate-800 text-white font-bold text-xs uppercase tracking-wider flex justify-between items-center">
+                        <span>${sec.title}</span>
+                        <span class="text-[10px] text-slate-400">Μήνας: ${MONTH_NAMES_GR[mIdx]}</span>
+                    </div>
+                    <div class="p-3 sm:p-4 space-y-3 bg-white">
+                        <div class="grid grid-cols-12 gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b pb-2">
+                            <div class="col-span-6">Κατηγορία</div>
+                            <div class="col-span-3 text-right">Budget (€)</div>
+                            <div class="col-span-3 text-right">Actual (€)</div>
+                        </div>
+                `;
+
+                sec.items.forEach(item => {
+                    const cell = (yData[item.id] && yData[item.id][mIdx]) ? yData[item.id][mIdx] : { budget: 0, actual: 0 };
+                    const formattedBudget = formatCurrency(cell.budget);
+                    const formattedActual = formatCurrency(cell.actual);
+
+                    secHtml += `
+                        <div class="grid grid-cols-12 gap-2 items-center text-xs border-b border-slate-100 pb-2">
+                            <div class="col-span-6 font-semibold text-slate-700 truncate" title="${item.name}">${item.name}</div>
+                            <div class="col-span-3">
+                                <input type="text" inputmode="decimal" 
+                                    onfocus="handleAmountFocus(this)" 
+                                    onblur="handleAmountBlur(this)" 
+                                    oninput="updateMonthlyEntrySummary()" 
+                                    id="entry_b_${item.id}" 
+                                    data-raw-value="${cell.budget}" 
+                                    value="${formattedBudget}" 
+                                    placeholder="0,00 €" 
+                                    class="w-full text-right p-1.5 sm:p-2 border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:border-emerald-500">
+                            </div>
+                            <div class="col-span-3">
+                                <input type="text" inputmode="decimal" 
+                                    onfocus="handleAmountFocus(this)" 
+                                    onblur="handleAmountBlur(this)" 
+                                    oninput="updateMonthlyEntrySummary()" 
+                                    id="entry_a_${item.id}" 
+                                    data-raw-value="${cell.actual}" 
+                                    value="${formattedActual}" 
+                                    placeholder="0,00 €" 
+                                    class="w-full text-right p-1.5 sm:p-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500">
+                            </div>
+                        </div>
+                    `;
+                });
+
+                secHtml += `</div>`;
+                secCard.innerHTML = secHtml;
+                container.appendChild(secCard);
+            });
+
+            renderAnnualExpensesSummaryRight();
+            updateMonthlyEntrySummary();
+        }
+
+        function parseInputValue(inputEl) {
+            if (!inputEl) return 0;
+            if (inputEl.dataset && inputEl.dataset.rawValue !== undefined && inputEl.dataset.rawValue !== '') {
+                return parseFloat(inputEl.dataset.rawValue) || 0;
+            }
+            let valStr = inputEl.value.replace('€', '').trim().replace(/\./g, '').replace(',', '.');
+            return parseFloat(valStr) || 0;
+        }
+
+        function handleAmountFocus(inputEl) {
+            const rawVal = parseInputValue(inputEl);
+            inputEl.value = rawVal === 0 ? '' : rawVal;
+        }
+
+        function handleAmountBlur(inputEl) {
+            let valStr = inputEl.value.trim().replace(',', '.');
+            let rawVal = parseFloat(valStr) || 0;
+            rawVal = Math.round(rawVal * 100) / 100;
+            inputEl.dataset.rawValue = rawVal;
+            inputEl.value = formatCurrency(rawVal);
+            updateMonthlyEntrySummary();
+        }
+
+        function renderAnnualExpensesSummaryRight() {
+            const container = document.getElementById('annualExpensesSummaryContainer');
+            if (!container) return;
+
+            const year = appState.currentYear;
+            const yData = appState.budgetData[year] || {};
+            const annualSec = appState.sections.find(s => s.id === 'annual_expenses');
+
+            if (!annualSec || !annualSec.items.length) {
+                container.innerHTML = `<p class="text-xs text-slate-400 italic">Δεν υπάρχουν ορισμένα ετήσια έξοδα.</p>`;
+                return;
+            }
+
+            let html = `
+                <div class="grid grid-cols-12 gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b pb-1">
+                    <div class="col-span-5">Έξοδο</div>
+                    <div class="col-span-2 text-right">Budget</div>
+                    <div class="col-span-2 text-right">Actual</div>
+                    <div class="col-span-3 text-right">Υπόλοιπο</div>
+                </div>
+            `;
+
+            let totB = 0;
+            let totA = 0;
+
+            annualSec.items.forEach(item => {
+                let itemB = 0;
+                let itemA = 0;
+
+                for (let m = 0; m < 12; m++) {
+                    const cell = (yData[item.id] && yData[item.id][m]) ? yData[item.id][m] : { budget: 0, actual: 0 };
+                    itemB += cell.budget;
+                    itemA += cell.actual;
+                }
+
+                totB += itemB;
+                totA += itemA;
+
+                const rem = itemB - itemA;
+                const remColor = rem < 0 ? 'text-rose-600' : 'text-emerald-600';
+
+                html += `
+                    <div class="grid grid-cols-12 gap-2 text-xs items-center border-b border-slate-100 pb-1.5">
+                        <div class="col-span-5 font-medium text-slate-700 truncate" title="${item.name}">${item.name}</div>
+                        <div class="col-span-2 text-right text-slate-500 text-[11px]">${formatCurrency(itemB)}</div>
+                        <div class="col-span-2 text-right text-slate-800 font-semibold text-[11px]">${formatCurrency(itemA)}</div>
+                        <div class="col-span-3 text-right font-bold ${remColor} text-[11px]">${formatCurrency(rem)}</div>
+                    </div>
+                `;
+            });
+
+            const totRem = totB - totA;
+            const totRemColor = totRem < 0 ? 'text-rose-600' : 'text-emerald-600';
+
+            html += `
+                <div class="grid grid-cols-12 gap-2 text-xs font-extrabold pt-2 border-t-2 border-slate-300 bg-slate-100 p-2 rounded-xl">
+                    <div class="col-span-5 text-slate-800">ΣΥΝΟΛΟ ΕΤΟΥΣ:</div>
+                    <div class="col-span-2 text-right text-slate-600 text-[11px]">${formatCurrency(totB)}</div>
+                    <div class="col-span-2 text-right text-slate-800 text-[11px]">${formatCurrency(totA)}</div>
+                    <div class="col-span-3 text-right ${totRemColor} text-[11px]">${formatCurrency(totRem)}</div>
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        function updateMonthlyEntrySummary() {
+            let incBud = 0, incAct = 0;
+            let expBud = 0, expAct = 0;
+
+            appState.sections.forEach(sec => {
+                sec.items.forEach(item => {
+                    const bEl = document.getElementById(`entry_b_${item.id}`);
+                    const aEl = document.getElementById(`entry_a_${item.id}`);
+                    const bVal = bEl ? parseInputValue(bEl) : 0;
+                    const aVal = aEl ? parseInputValue(aEl) : 0;
+
+                    if (sec.type === 'INCOME') {
+                        incBud += bVal;
+                        incAct += aVal;
+                    } else {
+                        expBud += bVal;
+                        expAct += aVal;
+                    }
+                });
+            });
+
+            const netBud = incBud - expBud;
+            const netAct = incAct - expAct;
+            const summaryContainer = document.getElementById('monthlyEntrySummary');
+            if (!summaryContainer) return;
+
+            summaryContainer.innerHTML = `
+                <div class="flex items-center space-x-2">
+                    <span class="text-slate-400">Έσοδα:</span>
+                    <span class="text-emerald-400 font-bold">${formatCurrency(incAct)}</span>
+                    <span class="text-[10px] text-slate-400">(Bud: ${formatCurrency(incBud)})</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-slate-400">Έξοδα:</span>
+                    <span class="text-rose-400 font-bold">${formatCurrency(expAct)}</span>
+                    <span class="text-[10px] text-slate-400">(Bud: ${formatCurrency(expBud)})</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-slate-400">Καθαρό (Net):</span>
+                    <span class="${netAct >= 0 ? 'text-amber-400' : 'text-rose-400'} font-bold">${formatCurrency(netAct)}</span>
+                    <span class="text-[10px] text-slate-400">(Bud: ${formatCurrency(netBud)})</span>
+                </div>
+            `;
+        }
+
+        function copyMonthlyBudgetToActual() {
+            const mIdx = parseInt(document.getElementById('entryMonthSelect').value);
+            appState.sections.forEach(sec => {
+                sec.items.forEach(item => {
+                    const bInput = document.getElementById(`entry_b_${item.id}`);
+                    const aInput = document.getElementById(`entry_a_${item.id}`);
+                    if (bInput && aInput) {
+                        const val = parseInputValue(bInput);
+                        aInput.dataset.rawValue = val;
+                        aInput.value = formatCurrency(val);
+                    }
+                });
+            });
+            updateMonthlyEntrySummary();
+            showToast(`Τα ποσά Budget αντιγράφηκαν στα Actual για τον μήνα ${MONTH_NAMES_GR[mIdx]}!`, 'info');
+        }
+
+        function saveMonthlyEntryForm() {
+            const mIdx = parseInt(document.getElementById('entryMonthSelect').value);
+            const year = appState.currentYear;
+
+            ensureYearData(year);
+
+            appState.sections.forEach(sec => {
+                sec.items.forEach(item => {
+                    const bInput = document.getElementById(`entry_b_${item.id}`);
+                    const aInput = document.getElementById(`entry_a_${item.id}`);
+
+                    if (bInput && aInput) {
+                        const bVal = parseInputValue(bInput);
+                        const aVal = parseInputValue(aInput);
+
+                        appState.budgetData[year][item.id][mIdx] = {
+                            budget: Math.round(bVal * 100) / 100,
+                            actual: Math.round(aVal * 100) / 100
+                        };
+                    }
+                });
+            });
+
+            saveToStorage();
+            renderMatrixTable();
+            renderDashboard();
+            renderMonthlyEntryForm();
+            showToast(`Οι αλλαγές για τον μήνα ${MONTH_NAMES_GR[mIdx]} αποθηκεύτηκαν!`, 'success');
+        }
+
+        function openCellEditModal(itemId, monthIdx, itemName) {
+            document.getElementById('modalItemId').value = itemId;
+            document.getElementById('modalMonthIdx').value = monthIdx;
+            document.getElementById('modalItemTitle').innerText = itemName;
+            document.getElementById('modalMonthSub').innerText = `Μήνας: ${MONTH_NAMES_GR[monthIdx]} ${appState.currentYear}`;
+
+            const year = appState.currentYear;
+            ensureYearData(year);
+            const cell = (appState.budgetData[year][itemId] && appState.budgetData[year][itemId][monthIdx]) ? appState.budgetData[year][itemId][monthIdx] : { budget: 0, actual: 0 };
+
+            const bInput = document.getElementById('modalBudgetVal');
+            const aInput = document.getElementById('modalActualVal');
+
+            bInput.value = cell.budget || 0;
+            aInput.value = cell.actual || 0;
+
+            document.getElementById('cellEditModal').classList.remove('hidden');
+            setTimeout(() => {
+                aInput.focus();
+                aInput.select();
+            }, 50);
+        }
+
+        function closeCellEditModal() {
+            document.getElementById('cellEditModal').classList.add('hidden');
+        }
+
+        function saveCellEditModal(e) {
+            e.preventDefault();
+            const itemId = document.getElementById('modalItemId').value;
+            const monthIdx = parseInt(document.getElementById('modalMonthIdx').value);
+            const year = appState.currentYear;
+
+            const bVal = Math.round((parseFloat(document.getElementById('modalBudgetVal').value) || 0) * 100) / 100;
+            const aVal = Math.round((parseFloat(document.getElementById('modalActualVal').value) || 0) * 100) / 100;
+
+            ensureYearData(year);
+            appState.budgetData[year][itemId][monthIdx] = { budget: bVal, actual: aVal };
+
+            saveToStorage();
+            closeCellEditModal();
+            renderMatrixTable();
+            renderDashboard();
+            renderMonthlyEntryForm();
+            showToast('Το κελί ενημερώθηκε επιτυχώς!', 'success');
+        }
+
+        function renderCategoryManager() {
+            const container = document.getElementById('categoryManagerList');
+            container.innerHTML = '';
+
+            let totalCount = 0;
+
+            appState.sections.forEach(sec => {
+                totalCount += sec.items.length;
+                const group = document.createElement('div');
+                group.className = 'border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2';
+                
+                let groupHtml = `<div class="font-bold text-xs text-slate-800 uppercase tracking-wider flex justify-between items-center">
+                    <span>${sec.title}</span>
+                    <span class="text-[10px] text-slate-500">(${sec.items.length})</span>
+                </div>`;
+
+                sec.items.forEach(item => {
+                    groupHtml += `
+                        <div class="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-100 text-xs">
+                            <span class="font-semibold text-slate-700 truncate pr-2" title="${item.name}">${item.name}</span>
+                            <button onclick="removeCategoryItem('${sec.id}', '${item.id}')" class="text-slate-400 hover:text-rose-600 p-1 transition rounded hover:bg-rose-50" title="Διαγραφή">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    `;
+                });
+
+                group.innerHTML = groupHtml;
+                container.appendChild(group);
+            });
+
+            const badge = document.getElementById('catTotalBadge');
+            if (badge) badge.innerText = `${totalCount} Κατηγορίες`;
+        }
+
+        function addNewCategoryItem(e) {
+            e.preventDefault();
+            const secId = document.getElementById('newCatSection').value;
+            const name = document.getElementById('newCatName').value.trim();
+
+            if (!name) return;
+
+            const sec = appState.sections.find(s => s.id === secId);
+            if (sec) {
+                const newItemId = 'item_' + Date.now();
+                sec.items.push({ id: newItemId, name: name });
+
+                Object.keys(appState.budgetData).forEach(y => {
+                    if (!appState.budgetData[y][newItemId]) {
+                        appState.budgetData[y][newItemId] = {};
+                        for (let m = 0; m < 12; m++) {
+                            appState.budgetData[y][newItemId][m] = { budget: 0, actual: 0 };
+                        }
+                    }
+                });
+
+                ensureYearData(appState.currentYear);
+                saveToStorage();
+                renderCategoryManager();
+                renderMatrixTable();
+                renderMonthlyEntryForm();
+                updateStorageInfoDisplay();
+                document.getElementById('newCatName').value = '';
+                showToast(`Η κατηγορία "${name}" προστέθηκε με αρχική τιμή 0,00 €!`, 'success');
+            }
+        }
+
+        function removeCategoryItem(secId, itemId) {
+            const sec = appState.sections.find(s => s.id === secId);
+            if (!sec) return;
+            const item = sec.items.find(i => i.id === itemId);
+            const itemName = item ? item.name : 'αυτή την κατηγορία';
+
+            if (confirm(`Θέλετε να διαγράψετε την κατηγορία "${itemName}";`)) {
+                sec.items = sec.items.filter(i => i.id !== itemId);
+                saveToStorage();
+                renderCategoryManager();
+                renderMatrixTable();
+                renderMonthlyEntryForm();
+                updateStorageInfoDisplay();
+                showToast(`Η κατηγορία διαγράφηκε.`, 'info');
+            }
+        }
+
+        function switchTab(tabId) {
+            ['matrix', 'dashboard', 'entry', 'categories', 'settings'].forEach(t => {
+                const sec = document.getElementById(`view-${t}`);
+                const nav = document.getElementById(`nav-${t}`);
+                if (t === tabId) {
+                    if (sec) sec.classList.remove('hidden');
+                    if (nav) nav.className = 'nav-btn py-3 px-3 md:px-4 font-semibold text-xs md:text-sm border-b-2 border-emerald-600 text-emerald-700 flex items-center space-x-2 whitespace-nowrap bg-emerald-50/40 md:bg-transparent rounded-t-lg md:rounded-none';
+                } else {
+                    if (sec) sec.classList.add('hidden');
+                    if (nav) nav.className = 'nav-btn py-3 px-3 md:px-4 font-semibold text-xs md:text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center space-x-2 whitespace-nowrap';
+                }
+            });
+
+            if (tabId === 'dashboard') renderDashboard();
+            if (tabId === 'entry') renderMonthlyEntryForm();
+            if (tabId === 'settings') updateStorageInfoDisplay();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function exportCSV() {
+            const year = appState.currentYear;
+            const yData = appState.budgetData[year] || {};
+            const esc = (text) => `"${String(text || '').replace(/"/g, '""')}"`;
+            const SEP = ';';
+
+            let csv = '\uFEFF';
+            csv += 'sep=' + SEP + '\r\n';
+            csv += `${esc(`ΟΙΚΟΓΕΝΕΙΑΚΟΣ ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ (HOME BUDGET) - ΕΤΟΣ ${year}`)}${SEP}\r\n`;
+            csv += `${esc(`Ημερομηνία Εξαγωγής: ${new Date().toLocaleDateString('el-GR')} ${new Date().toLocaleTimeString('el-GR')}`)}${SEP}\r\n\r\n`;
+
+            let headerRow = [esc('ΚΑΤΗΓΟΡΙΑ'), esc('ΕΝΟΤΗΤΑ')];
+            MONTH_NAMES.forEach(m => {
+                headerRow.push(esc(`${m} Budget`));
+                headerRow.push(esc(`${m} Actual`));
+                headerRow.push(esc(`${m} Diff`));
+            });
+            headerRow.push(esc('Σύνολο Έτους Budget'));
+            headerRow.push(esc('Σύνολο Έτους Actual'));
+            headerRow.push(esc('Σύνολο Έτους Diff'));
+            csv += headerRow.join(SEP) + '\r\n';
+
+            const sectionTotals = {};
+
+            appState.sections.forEach(sec => {
+                sectionTotals[sec.id] = Array.from({length: 12}, () => ({ budget: 0, actual: 0 }));
+                csv += `${esc(`--- ${sec.title} ---`)}${SEP}${esc(sec.type)}${SEP}` + Array(12 * 3 + 3).fill('').join(SEP) + '\r\n';
+
+                sec.items.forEach(item => {
+                    let row = [esc(item.name), esc(sec.title)];
+                    let yearB = 0, yearA = 0;
+
+                    for (let m = 0; m < 12; m++) {
+                        const cell = (yData[item.id] && yData[item.id][m]) ? yData[item.id][m] : { budget: 0, actual: 0 };
+                        const bVal = Number(cell.budget) || 0;
+                        const aVal = Number(cell.actual) || 0;
+                        const diff = sec.type === 'INCOME' ? (aVal - bVal) : (bVal - aVal);
+
+                        yearB += bVal;
+                        yearA += aVal;
+
+                        sectionTotals[sec.id][m].budget += bVal;
+                        sectionTotals[sec.id][m].actual += aVal;
+
+                        row.push(esc(formatCurrency(bVal)));
+                        row.push(esc(formatCurrency(aVal)));
+                        row.push(esc(formatCurrency(diff)));
+                    }
+
+                    const yearDiff = sec.type === 'INCOME' ? (yearA - yearB) : (yearB - yearA);
+                    row.push(esc(formatCurrency(yearB)));
+                    row.push(esc(formatCurrency(yearA)));
+                    row.push(esc(formatCurrency(yearDiff)));
+
+                    csv += row.join(SEP) + '\r\n';
+                });
+
+                let subRow = [esc(`ΣΥΝΟΛΟ ${sec.title}`), esc('ΥΠΟΣΥΝΟΛΟ')];
+                let secYearB = 0, secYearA = 0;
+
+                for (let m = 0; m < 12; m++) {
+                    const bVal = sectionTotals[sec.id][m].budget;
+                    const aVal = sectionTotals[sec.id][m].actual;
+                    const diff = sec.type === 'INCOME' ? (aVal - bVal) : (bVal - aVal);
+
+                    secYearB += bVal;
+                    secYearA += aVal;
+
+                    subRow.push(esc(formatCurrency(bVal)));
+                    subRow.push(esc(formatCurrency(aVal)));
+                    subRow.push(esc(formatCurrency(diff)));
+                }
+
+                const secYearDiff = sec.type === 'INCOME' ? (secYearA - secYearB) : (secYearB - secYearA);
+                subRow.push(esc(formatCurrency(secYearB)));
+                subRow.push(esc(formatCurrency(secYearA)));
+                subRow.push(esc(formatCurrency(secYearDiff)));
+
+                csv += subRow.join(SEP) + '\r\n\r\n';
+            });
+
+            let netRow = [esc('NET (Έσοδα - Έξοδα)'), esc('ΚΑΘΑΡΟ ΥΠΟΛΟΙΠΟ')];
+            let yearNetB = 0, yearNetA = 0;
+
+            for (let m = 0; m < 12; m++) {
+                const incB = sectionTotals['income'] ? sectionTotals['income'][m].budget : 0;
+                const incA = sectionTotals['income'] ? sectionTotals['income'][m].actual : 0;
+
+                const annB = sectionTotals['annual_expenses'] ? sectionTotals['annual_expenses'][m].budget : 0;
+                const annA = sectionTotals['annual_expenses'] ? sectionTotals['annual_expenses'][m].actual : 0;
+
+                const mthB = sectionTotals['monthly_expenses'] ? sectionTotals['monthly_expenses'][m].budget : 0;
+                const mthA = sectionTotals['monthly_expenses'] ? sectionTotals['monthly_expenses'][m].actual : 0;
+
+                const netB = incB - (annB + mthB);
+                const netA = incA - (annA + mthA);
+                const diff = netA - netB;
+
+                yearNetB += netB;
+                yearNetA += netA;
+
+                netRow.push(esc(formatCurrency(netB)));
+                netRow.push(esc(formatCurrency(netA)));
+                netRow.push(esc(formatCurrency(diff)));
+            }
+
+            const yearNetDiff = yearNetA - yearNetB;
+            netRow.push(esc(formatCurrency(yearNetB)));
+            netRow.push(esc(formatCurrency(yearNetA)));
+            netRow.push(esc(formatCurrency(yearNetDiff)));
+
+            csv += netRow.join(SEP) + '\r\n';
+
+            try {
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", `Home_Budget_${year}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                setTimeout(() => URL.revokeObjectURL(url), 1500);
+                showToast(`Η εξαγωγή του Home_Budget_${year}.csv ολοκληρώθηκε!`, 'success');
+            } catch(err) {
+                console.error("CSV Export error:", err);
+                showToast('Σφάλμα κατά την εξαγωγή του αρχείου CSV.', 'error');
+            }
+        }
+
+        function exportJSON() {
+            try {
+                const payload = {
+                    appName: 'Home Budget',
+                    version: '2.2_structured',
+                    exportedAt: new Date().toISOString(),
+                    currentYear: appState.currentYear,
+                    sections: appState.sections,
+                    budgetData: appState.budgetData
+                };
+
+                const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const downloadAnchor = document.createElement('a');
+                downloadAnchor.setAttribute("href", url);
+                downloadAnchor.setAttribute("download", `HomeBudget_Backup_${appState.currentYear}.json`);
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                downloadAnchor.removeChild ? downloadAnchor.remove() : document.body.removeChild(downloadAnchor);
+                setTimeout(() => URL.revokeObjectURL(url), 1500);
+                showToast(`Αντίγραφο ασφαλείας JSON εξήχθη επιτυχώς!`, 'success');
+            } catch(err) {
+                console.error("JSON Export error:", err);
+                showToast('Σφάλμα κατά την εξαγωγή JSON.', 'error');
+            }
+        }
+
+        function importJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (!imported || typeof imported !== 'object') {
+                        throw new Error('Το αρχείο δεν περιέχει έγκυρο JSON αντικείμενο.');
+                    }
+                    if (!imported.sections || !Array.isArray(imported.sections) || imported.sections.length === 0) {
+                        throw new Error('Λείπουν οι απαραίτητες ενότητες κατηγοριών (sections).');
+                    }
+                    if (!imported.budgetData || typeof imported.budgetData !== 'object') {
+                        throw new Error('Λείπουν τα οικονομικά δεδομένα προϋπολογισμού (budgetData).');
+                    }
+
+                    appState.sections = imported.sections;
+                    appState.budgetData = imported.budgetData;
+                    if (imported.currentYear && Number(imported.currentYear)) {
+                        appState.currentYear = Number(imported.currentYear);
+                    }
+
+                    ensureYearData(appState.currentYear);
+                    saveToStorage();
+
+                    document.getElementById('currentYearDisplay').innerText = appState.currentYear;
+                    renderMatrixHeader();
+                    renderMatrixTable();
+                    renderDashboard();
+                    renderCategoryManager();
+                    renderMonthlyEntryForm();
+                    updateStorageInfoDisplay();
+
+                    showToast('Επιτυχής εισαγωγή & επαναφορά αντιγράφου ασφαλείας!', 'success');
+                } catch(err) {
+                    console.error("Import error:", err);
+                    showToast('Σφάλμα αρχείου JSON: ' + (err.message || 'Μη αναγνωρίσιμο αρχείο'), 'error');
+                } finally {
+                    event.target.value = '';
+                }
+            };
+            reader.onerror = function() {
+                showToast('Αποτυχία ανάγνωσης αρχείου.', 'error');
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        function resetAllData() {
+            if (confirm('ΠΡΟΣΟΧΗ: Θέλετε να επαναφέρετε τις αρχικές κατηγορίες και να μηδενίσετε όλα τα ποσά (0,00 €);')) {
+                localStorage.removeItem('home_budget_spreadsheet_data');
+                appState.sections = DEFAULT_SECTIONS;
+                appState.budgetData = {};
+                appState.currentYear = 2026;
+                initDefaultYearData(2026);
+                saveToStorage();
+                renderMatrixHeader();
+                renderMatrixTable();
+                renderDashboard();
+                renderCategoryManager();
+                renderMonthlyEntryForm();
+                updateStorageInfoDisplay();
+                showToast('Έγινε επαναφορά και μηδενισμός σε 0,00 €!', 'info');
+            }
+        }
+
+        function updateStorageInfoDisplay() {
+            const years = Object.keys(appState.budgetData || {}).length;
+            let totalItems = 0;
+            appState.sections.forEach(s => totalItems += s.items.length);
+
+            const elYears = document.getElementById('statYearsCount');
+            const elCats = document.getElementById('statCategoriesCount');
+            const elSaved = document.getElementById('statLastSaved');
+            const storageText = document.getElementById('storageStatusText');
+
+            if (elYears) elYears.innerText = years || 1;
+            if (elCats) elCats.innerText = totalItems;
+            if (elSaved) {
+                if (appState.lastSaved) {
+                    const d = new Date(appState.lastSaved);
+                    elSaved.innerText = d.toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' }) + ', ' + d.toLocaleDateString('el-GR');
+                } else {
+                    elSaved.innerText = 'Πρόσφατα';
+                }
+            }
+            if (storageText) {
+                storageText.innerText = 'Αποθηκευμένο';
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            let container = document.getElementById('toastContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toastContainer';
+                container.className = 'fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none max-w-sm w-full px-4';
+                document.body.appendChild(container);
+            }
+
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-emerald-600 text-white' : (type === 'error' ? 'bg-rose-600 text-white' : 'bg-slate-800 text-white');
+            const iconClass = type === 'success' ? 'fa-circle-check' : (type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-info');
+
+            toast.className = `${bgClass} shadow-xl rounded-xl p-3 flex items-center space-x-3 text-xs font-semibold transform transition-all duration-300 translate-y-4 opacity-0 pointer-events-auto border border-white/10`;
+            toast.innerHTML = `
+                <i class="fa-solid ${iconClass} text-base flex-shrink-0"></i>
+                <span class="flex-grow leading-tight">${message}</span>
+                <button class="opacity-75 hover:opacity-100 ml-2 text-sm p-1 leading-none">&times;</button>
+            `;
+
+            toast.querySelector('button').onclick = () => {
+                toast.classList.add('opacity-0', 'translate-y-4');
+                setTimeout(() => toast.remove(), 300);
+            };
+
+            container.appendChild(toast);
+            requestAnimationFrame(() => {
+                toast.classList.remove('opacity-0', 'translate-y-4');
+            });
+
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.classList.add('opacity-0', 'translate-y-4');
+                    setTimeout(() => toast.remove(), 300);
+                }
+            }, 3500);
+        }
+
+        function formatCurrency(num) {
+            const val = Number(num) || 0;
+            return val.toLocaleString('el-GR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }) + ' €';
+        }
+
+        function formatNum(num) {
+            return formatCurrency(num);
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        }
+    </script>
+</body>
+</html>
