@@ -481,10 +481,24 @@
             syncBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i><span class="hidden sm:inline ml-1">Committing...</span>`;
 
             try {
-                // 1. Ενημέρωση των αρχικών μεταβλητών στον κώδικα JavaScript με τις τρέχουσες τιμές
+                // 1. Λήψη του τρέχοντος HTML της σελίδας
                 let currentHtml = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
 
-                // 2. Ασφαλής μετατροπή του HTML σε Base64 με υποστήριξη UTF-8 / Ελληνικών
+                // 2. Ενσωμάτωση των τρεχουσών τιμών (appState) απευθείας στον πηγαίο κώδικα HTML
+                const updated2026DataJson = JSON.stringify(appState.budgetData[2026] || INITIAL_2026_DATA);
+                const updatedSectionsJson = JSON.stringify(appState.sections);
+
+                currentHtml = currentHtml.replace(
+                    /const INITIAL_2026_DATA = \{[\s\S]*?\};/,
+                    `const INITIAL_2026_DATA = ${updated2026DataJson};`
+                );
+
+                currentHtml = currentHtml.replace(
+                    /const DEFAULT_SECTIONS = \[[\s\S]*?\];/,
+                    `const DEFAULT_SECTIONS = ${updatedSectionsJson};`
+                );
+
+                // 3. Ασφαλής μετατροπή του HTML σε Base64 με υποστήριξη UTF-8 / Ελληνικών
                 const utf8Bytes = new TextEncoder().encode(currentHtml);
                 let binaryStr = "";
                 const len = utf8Bytes.byteLength;
@@ -495,7 +509,7 @@
 
                 const apiUrl = `https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/${GH_CONFIG.filePath}`;
 
-                // 3. Ανάκτηση του SHA του index.html από το GitHub
+                // 4. Ανάκτηση του SHA του index.html από το GitHub
                 let sha = null;
                 const getFileRes = await fetch(apiUrl, {
                     headers: { 
@@ -512,7 +526,7 @@
                     throw new Error("Δεν έχετε δικαίωμα πρόσβασης. Ελέγξτε το Token σας.");
                 }
 
-                // 4. Αποστολή του νέου index.html στο GitHub Repo
+                // 5. Αποστολή του ενημερωμένου index.html στο GitHub
                 const commitRes = await fetch(apiUrl, {
                     method: "PUT",
                     headers: {
@@ -521,7 +535,7 @@
                         "Accept": "application/vnd.github.v3+json"
                     },
                     body: JSON.stringify({
-                        message: `Update index.html data: ${new Date().toLocaleString('el-GR')}`,
+                        message: `Update index.html with live budget data: ${new Date().toLocaleString('el-GR')}`,
                         content: contentEncoded,
                         sha: sha,
                         branch: GH_CONFIG.branch
@@ -1563,7 +1577,7 @@
             csv += `${esc(`ΟΙΚΟΓΕΝΕΙΑΚΟΣ ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ (HOME BUDGET) - ΕΤΟΣ ${year}`)}${SEP}\r\n`;
             csv += `${esc(`Ημερομηνία Εξαγωγής: ${new Date().toLocaleDateString('el-GR')} ${new Date().toLocaleTimeString('el-GR')}`)}${SEP}\r\n\r\n`;
 
-            let headerRow = [esc('ΚΑΤΗΓΟΡΙΑ'), esc('ΕΝΟΤΗΤΑ')];
+            let headerRow = [esc('ΚΑΤΗΓΟΡΙA'), esc('ΕΝΟΤΗΤΑ')];
             MONTH_NAMES.forEach(m => {
                 headerRow.push(esc(`${m} Budget`));
                 headerRow.push(esc(`${m} Actual`));
@@ -1753,7 +1767,7 @@
                 }
             };
             reader.onerror = function() {
-                showToast('Αποτυχία ανάγνωσης αρχείου.', 'error');
+                showToast('Αποτυχία ανάγνωσης αρχείου.', 'event');
                 event.target.value = '';
             };
             reader.readAsText(file);
