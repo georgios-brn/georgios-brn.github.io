@@ -101,7 +101,7 @@
             <!-- Global Controls & Status -->
             <div class="flex items-center space-x-2 sm:space-x-3">
                 <!-- GitHub Auto-Commit Button -->
-                <button id="gh-sync-btn" onclick="commitToGitHub()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-2 rounded-xl transition flex items-center space-x-1.5 shadow-sm active:scale-95" title="Αυτόματη Αποθήκευση & Commit στο GitHub">
+                <button id="gh-sync-btn" onclick="commitToGitHub()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-2 rounded-xl transition flex items-center space-x-1.5 shadow-sm active:scale-95" title="Ενημέρωση & Commit στο index.html">
                     <i class="fa-solid fa-cloud-arrow-up"></i>
                     <span class="hidden sm:inline">Sync to GitHub</span>
                 </button>
@@ -460,11 +460,11 @@
 
     <!-- APPLICATION LOGIC JS -->
     <script>
-        // Ρύθμιση για αποθήκευση των δεδομένων στο αρχείο data.json
+        // Ρύθμιση για ενημέρωση του ίδιου του index.html στο GitHub
         const GH_CONFIG = {
             owner: "georgios-brn",
             repo: "georgios-brn.github.io",
-            filePath: "data.json",
+            filePath: "index.html",
             branch: "main"
         };
 
@@ -478,46 +478,41 @@
 
             const syncBtn = document.getElementById("gh-sync-btn");
             syncBtn.disabled = true;
-            syncBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i><span class="hidden sm:inline ml-1">Syncing...</span>`;
+            syncBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i><span class="hidden sm:inline ml-1">Committing...</span>`;
 
             try {
-                // 1. Προετοιμασία μόνο των δεδομένων της εφαρμογής σε JSON
-                const exportData = {
-                    version: '2.2_structured',
-                    lastSaved: new Date().toISOString(),
-                    currentYear: appState.currentYear,
-                    sections: appState.sections,
-                    budgetData: appState.budgetData
-                };
+                // 1. Ενημέρωση των αρχικών μεταβλητών στον κώδικα JavaScript με τις τρέχουσες τιμές
+                let currentHtml = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
 
-                const jsonString = JSON.stringify(exportData, null, 2);
-                const utf8Bytes = new TextEncoder().encode(jsonString);
+                // 2. Ασφαλής μετατροπή του HTML σε Base64 με υποστήριξη UTF-8 / Ελληνικών
+                const utf8Bytes = new TextEncoder().encode(currentHtml);
                 let binaryStr = "";
-                for (let i = 0; i < utf8Bytes.length; i++) {
+                const len = utf8Bytes.byteLength;
+                for (let i = 0; i < len; i++) {
                     binaryStr += String.fromCharCode(utf8Bytes[i]);
                 }
                 const contentEncoded = btoa(binaryStr);
 
                 const apiUrl = `https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/${GH_CONFIG.filePath}`;
 
-                // 2. Έλεγχος αν υπάρχει ήδη το data.json στο GitHub
+                // 3. Ανάκτηση του SHA του index.html από το GitHub
                 let sha = null;
-                try {
-                    const getFileRes = await fetch(apiUrl, {
-                        headers: { 
-                            "Authorization": `Bearer ${token}`,
-                            "Accept": "application/vnd.github.v3+json"
-                        }
-                    });
-                    if (getFileRes.ok) {
-                        const fileData = await getFileRes.json();
-                        sha = fileData.sha;
+                const getFileRes = await fetch(apiUrl, {
+                    headers: { 
+                        "Authorization": `Bearer ${token}`,
+                        "Accept": "application/vnd.github.v3+json"
                     }
-                } catch (e) {
-                    console.log("To data.json δεν υπάρχει ακόμα, θα δημιουργηθεί νέο.");
+                });
+
+                if (getFileRes.ok) {
+                    const fileData = await getFileRes.json();
+                    sha = fileData.sha;
+                } else if (getFileRes.status === 401 || getFileRes.status === 403) {
+                    localStorage.removeItem("gh_pat_token");
+                    throw new Error("Δεν έχετε δικαίωμα πρόσβασης. Ελέγξτε το Token σας.");
                 }
 
-                // 3. Αποστολή των δεδομένων στο GitHub
+                // 4. Αποστολή του νέου index.html στο GitHub Repo
                 const commitRes = await fetch(apiUrl, {
                     method: "PUT",
                     headers: {
@@ -526,7 +521,7 @@
                         "Accept": "application/vnd.github.v3+json"
                     },
                     body: JSON.stringify({
-                        message: `Auto-sync budget data: ${new Date().toLocaleString('el-GR')}`,
+                        message: `Update index.html data: ${new Date().toLocaleString('el-GR')}`,
                         content: contentEncoded,
                         sha: sha,
                         branch: GH_CONFIG.branch
@@ -534,19 +529,17 @@
                 });
 
                 if (commitRes.ok) {
-                    showToast("✅ Τα δεδομένα συγχρονίστηκαν επιτυχώς στο GitHub!", "success");
+                    showToast("✅ Το index.html ενημερώθηκε επιτυχώς στο GitHub!", "success");
                 } else {
                     const err = await commitRes.json();
                     if (commitRes.status === 401 || commitRes.status === 403) {
                         localStorage.removeItem("gh_pat_token");
-                        showToast("❌ Λανθασμένο Token. Δοκιμάστε να το εισάγετε ξανά.", "error");
-                    } else {
-                        showToast(`❌ Σφάλμα GitHub: ${err.message}`, "error");
                     }
+                    showToast(`❌ Σφάλμα GitHub: ${err.message}`, "error");
                 }
             } catch (error) {
                 console.error(error);
-                showToast(`❌ Σφάλμα σύνδεσης: ${error.message}`, "error");
+                showToast(`❌ ${error.message || 'Σφάλμα σύνδεσης με το GitHub.'}`, "error");
             } finally {
                 syncBtn.disabled = false;
                 syncBtn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i><span class="hidden sm:inline">Sync to GitHub</span>`;
