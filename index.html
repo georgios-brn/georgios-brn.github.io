@@ -460,7 +460,7 @@
 
     <!-- APPLICATION LOGIC JS -->
     <script>
-        // Ρύθμιση για ενημέρωση του ίδιου του index.html στο GitHub
+        // Ρύθμιση για ενημέρωση αποκλειστικά του index.html στο GitHub
         const GH_CONFIG = {
             owner: "georgios-brn",
             repo: "georgios-brn.github.io",
@@ -484,7 +484,10 @@
                 // 1. Λήψη του τρέχοντος HTML της σελίδας
                 let currentHtml = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
 
-                // 2. Ενσωμάτωση των τρεχουσών τιμών (appState) απευθείας στον πηγαίο κώδικα HTML
+                // 2. Διόρθωση/Καθαρισμός τυχόν λανθασμένων ρυθμίσεων GH_CONFIG στον κώδικα HTML πριν την αποστολή
+                currentHtml = currentHtml.replace(/filePath:\s*["'][^"']+["']/, `filePath: "${GH_CONFIG.filePath}"`);
+
+                // 3. Ενσωμάτωση των τρεχουσών τιμών (appState) απευθείας στον πηγαίο κώδικα HTML
                 const updated2026DataJson = JSON.stringify(appState.budgetData[2026] || INITIAL_2026_DATA);
                 const updatedSectionsJson = JSON.stringify(appState.sections);
 
@@ -498,7 +501,7 @@
                     `const DEFAULT_SECTIONS = ${updatedSectionsJson};`
                 );
 
-                // 3. Ασφαλής μετατροπή του HTML σε Base64 με υποστήριξη UTF-8 / Ελληνικών
+                // 4. Ασφαλής μετατροπή του HTML σε Base64 με υποστήριξη UTF-8 / Ελληνικών
                 const utf8Bytes = new TextEncoder().encode(currentHtml);
                 let binaryStr = "";
                 const len = utf8Bytes.byteLength;
@@ -509,7 +512,7 @@
 
                 const apiUrl = `https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/${GH_CONFIG.filePath}`;
 
-                // 4. Ανάκτηση του SHA του index.html από το GitHub
+                // 5. Ανάκτηση του SHA του index.html από το GitHub
                 let sha = null;
                 const getFileRes = await fetch(apiUrl, {
                     headers: { 
@@ -526,7 +529,7 @@
                     throw new Error("Δεν έχετε δικαίωμα πρόσβασης. Ελέγξτε το Token σας.");
                 }
 
-                // 5. Αποστολή του ενημερωμένου index.html στο GitHub
+                // 6. Αποστολή του ενημερωμένου index.html στο GitHub
                 const commitRes = await fetch(apiUrl, {
                     method: "PUT",
                     headers: {
@@ -1577,7 +1580,7 @@
             csv += `${esc(`ΟΙΚΟΓΕΝΕΙΑΚΟΣ ΠΡΟΫΠΟΛΟΓΙΣΜΟΣ (HOME BUDGET) - ΕΤΟΣ ${year}`)}${SEP}\r\n`;
             csv += `${esc(`Ημερομηνία Εξαγωγής: ${new Date().toLocaleDateString('el-GR')} ${new Date().toLocaleTimeString('el-GR')}`)}${SEP}\r\n\r\n`;
 
-            let headerRow = [esc('ΚΑΤΗΓΟΡΙA'), esc('ΕΝΟΤΗΤΑ')];
+            let headerRow = [esc('ΚΑΤΗΓΟΡΙΑ'), esc('ΕΝΟΤΗΤΑ')];
             MONTH_NAMES.forEach(m => {
                 headerRow.push(esc(`${m} Budget`));
                 headerRow.push(esc(`${m} Actual`));
@@ -1767,7 +1770,7 @@
                 }
             };
             reader.onerror = function() {
-                showToast('Αποτυχία ανάγνωσης αρχείου.', 'event');
+                showToast('Αποτυχία ανάγνωσης αρχείου.', 'error');
                 event.target.value = '';
             };
             reader.readAsText(file);
