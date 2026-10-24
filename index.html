@@ -5255,69 +5255,88 @@
         };
 
         async function commitToGitHub() {
-            let token = localStorage.getItem("gh_pat_token");
-            if (!token) {
-                token = prompt("Εισάγετε το GitHub Personal Access Token σας:");
-                if (!token) return showToast("Η ακύρωση ολοκληρώθηκε: Απαιτείται token.", "error");
-                localStorage.setItem("gh_pat_token", token);
-            }
+    let token = localStorage.getItem("gh_pat_token");
+    if (!token) {
+        token = prompt("Εισάγετε το GitHub Personal Access Token σας:");
+        if (!token) return showToast("Η ακύρωση ολοκληρώθηκε: Απαιτείται token.", "error");
+        localStorage.setItem("gh_pat_token", token.trim());
+    }
 
-            const syncBtn = document.getElementById("gh-sync-btn");
-            syncBtn.disabled = true;
-            syncBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i><span class="hidden sm:inline ml-1">Committing...</span>`;
+    const syncBtn = document.getElementById("gh-sync-btn");
+    syncBtn.disabled = true;
+    syncBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i><span class="hidden sm:inline ml-1">Committing...</span>`;
 
-            try {
-                // Get the current document HTML content
-                const currentDocContent = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
-                const contentEncoded = btoa(unescape(encodeURIComponent(currentDocContent)));
-
-                const apiUrl = `https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/${GH_CONFIG.filePath}`;
-
-                // Fetch current file SHA
-                let sha = null;
-                const getFileRes = await fetch(apiUrl, {
-                    headers: { "Authorization": `token ${token}` }
-                });
-
-                if (getFileRes.ok) {
-                    const fileData = await getFileRes.json();
-                    sha = fileData.sha;
-                }
-
-                // Send commit PUT request
-                const commitRes = await fetch(apiUrl, {
-                    method: "PUT",
-                    headers: {
-                        "Authorization": `token ${token}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        message: `Auto-update budget app state: ${new Date().toLocaleString('el-GR')}`,
-                        content: contentEncoded,
-                        sha: sha,
-                        branch: GH_CONFIG.branch
-                    })
-                });
-
-                if (commitRes.ok) {
-                    showToast("✅ Επιτυχές commit στο GitHub repo!", "success");
-                } else {
-                    const err = await commitRes.json();
-                    if (commitRes.status === 401) {
-                        localStorage.removeItem("gh_pat_token");
-                        showToast("❌ Μη έγκυρο GitHub token. Παρακαλώ δοκιμάστε ξανά.", "error");
-                    } else {
-                        showToast(`❌ Commit failed: ${err.message}`, "error");
-                    }
-                }
-            } catch (error) {
-                console.error(error);
-                showToast("❌ Σφάλμα δικτύου κατά το commit στο GitHub.", "error");
-            } finally {
-                syncBtn.disabled = false;
-                syncBtn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i><span class="hidden sm:inline">Sync to GitHub</span>`;
-            }
+    try {
+        // 1. Ασφαλής μετατροπή του HTML σε Base64 (υποστήριξη Ελληνικών / UTF-8)
+        const currentDocContent = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+        const utf8Bytes = new TextEncoder().encode(currentDocContent);
+        let binaryStr = "";
+        for (let i = 0; i < utf8Bytes.length; i++) {
+            binaryStr += String.fromCharCode(utf8Bytes[i]);
         }
+        const contentEncoded = btoa(binaryStr);
+
+        const apiUrl = `https://api.github.com/repos/${GH_CONFIG.owner}/${GH_CONFIG.repo}/contents/${GH_CONFIG.filePath}`;
+
+        // 2. Ανάκτηση του SHA του αρχείου με χρονικό όριο (Timeout 8 δευτερολέπτων)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+        let sha = null;
+        const getFileRes = await fetch(apiUrl, {
+            headers: { 
+                "Authorization": `Bearer ${token}`,
+                "Accept": "application/vnd.github.v3+json"
+            },
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (getFileRes.ok) {
+            const fileData = await getFileRes.json();
+            sha = fileData.sha;
+        } else if (getFileRes.status === 401 || getFileRes.status === 403) {
+            localStorage.removeItem("gh_pat_token");
+            throw new Error("Δεν έχετε δικαίωμα πρόσβασης. Ελέγξτε το Token & τα δικαιώματα repo/contents.");
+        }
+
+        // 3. Αποστολή του Commit
+        const commitRes = await fetch(apiUrl, {
+            method: "PUT",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+                "Accept": "application/vnd.github.v3+json"
+            },
+            body: JSON.stringify({
+                message: `Auto-update budget app state: ${new Date().toLocaleString('el-GR')}`,
+                content: contentEncoded,
+                sha: sha,
+                branch: GH_CONFIG.branch
+            })
+        });
+
+        if (commitRes.ok) {
+            showToast("✅ Επιτυχές commit στο GitHub repo!", "success");
+        } else {
+            const err = await commitRes.json();
+            if (commitRes.status === 401 || commitRes.status === 403) {
+                localStorage.removeItem("gh_pat_token");
+            }
+            showToast(`❌ Σφάλμα: ${err.message || 'Αποτυχία commit'}`, "error");
+        }
+    } catch (error) {
+        console.error(error);
+        if (error.name === 'AbortError') {
+            showToast("❌ Η σύνδεση εξαντλήθηκε (Timeout). Ελέγξτε τη σύνδεση δικτύου.", "error");
+        } else {
+            showToast(`❌ ${error.message || 'Σφάλμα δικτύου κατά το commit.'}`, "error");
+        }
+    } finally {
+        syncBtn.disabled = false;
+        syncBtn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i><span class="hidden sm:inline">Sync to GitHub</span>`;
+    }
+}
 
         const MONTH_NAMES = [
             'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
