@@ -21,6 +21,28 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+    // 1. Καθαρισμός τυχόν Service Workers & CacheStorage στον browser
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for (let registration of registrations) {
+                registration.unregister();
+            }
+        });
+    }
+    if ('caches' in window) {
+        caches.keys().then(function(names) {
+            for (let name of names) caches.delete(name);
+        });
+    }
+
+    // 2. Αυτόματο Force Reload αν η σελίδα φορτώθηκε από την τοπική μνήμη (Disk Cache)
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted || (performance.navigation && performance.navigation.type === 2)) {
+            window.location.reload(true);
+        }
+    });
+    </script>
+    <script>
         tailwind.config = {
             theme: {
                 extend: {
