@@ -167,7 +167,7 @@
         <div class="max-w-7xl mx-auto px-2 sm:px-4 flex space-x-1 sm:space-x-2 md:space-x-4 overflow-x-auto no-scrollbar">
             <button onclick="switchTab('matrix')" id="nav-matrix" class="nav-btn py-3 px-3 md:px-4 font-semibold text-xs md:text-sm border-b-2 border-emerald-600 text-emerald-700 flex items-center space-x-2 whitespace-nowrap bg-emerald-50/40 md:bg-transparent">
                 <i class="fa-solid fa-table"></i>
-                <span>Πίνακας Excel (12 Μήνες)</span>
+                <span>Πίνακας Excel</span>
             </button>
             <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn py-3 px-3 md:px-4 font-semibold text-xs md:text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center space-x-2 whitespace-nowrap">
                 <i class="fa-solid fa-chart-line"></i>
@@ -194,22 +194,38 @@
         <!-- ================= VIEW 1: MATRIX SHEET (EXCEL STYLE) ================= -->
         <section id="view-matrix" class="space-y-4">
             <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap justify-between items-center gap-3">
+                <!-- Φίλτρο Επιλογής Μήνα -->
+                <div class="flex items-center flex-wrap gap-2">
+                    <div class="flex items-center space-x-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                        <span class="text-[11px] font-bold text-slate-500 px-1.5 uppercase flex items-center gap-1">
+                            <i class="fa-solid fa-calendar text-emerald-600"></i>
+                            <span class="hidden sm:inline">Μήνας:</span>
+                        </span>
+                        <button id="btnMonthCurrent" onclick="changeMatrixMonthFilter('CURRENT')" class="px-2.5 py-1 rounded-lg text-xs font-bold transition bg-emerald-600 text-white shadow-sm flex items-center space-x-1" title="Προβολή τρέχοντος μήνα και συνόλων">
+                            <i class="fa-solid fa-star text-[10px]"></i>
+                            <span>Τρέχων</span>
+                        </button>
+                        <button id="btnMonthAll" onclick="changeMatrixMonthFilter('ALL')" class="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-200 transition flex items-center space-x-1" title="Προβολή όλων των 12 μηνών">
+                            <i class="fa-solid fa-table-cells-large text-[10px]"></i>
+                            <span>Όλοι οι Μήνες</span>
+                        </button>
+                    </div>
+
+                    <select id="matrixMonthFilter" onchange="changeMatrixMonthFilter(this.value)" class="bg-slate-50 border border-slate-300 text-slate-800 font-bold text-xs rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-emerald-500 shadow-sm cursor-pointer" title="Επιλογή συγκεκριμένου μήνα">
+                    </select>
+                </div>
+
+                <!-- Προβολή Στοιχείων (Όλα / Πραγματικά / Budget) -->
                 <div class="flex items-center flex-wrap gap-1.5 sm:gap-2">
-                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider mr-1">Προβολή:</span>
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider mr-1">Στοιχεία:</span>
                     <button onclick="toggleMatrixDisplay('ALL')" id="btnDispAll" class="px-2.5 py-1.5 text-xs font-bold rounded-lg bg-slate-800 text-white shadow-sm transition">Όλα (B / A / Diff)</button>
                     <button onclick="toggleMatrixDisplay('ACTUAL')" id="btnDispAct" class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Μόνο Πραγματικά</button>
                     <button onclick="toggleMatrixDisplay('BUDGET')" id="btnDispBud" class="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition">Μόνο Budget</button>
                 </div>
 
-                <div class="flex items-center space-x-2 text-xs">
-                    <button onclick="scrollToCurrentMonth()" class="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-emerald-500 hover:text-emerald-700 bg-slate-50 font-semibold text-slate-600 flex items-center space-x-1.5 transition active:scale-95" title="Μετάβαση στον τρέχοντα μήνα στον πίνακα">
-                        <i class="fa-solid fa-crosshairs text-emerald-600"></i>
-                        <span>Τρέχων Μήνας</span>
-                    </button>
-                    <div class="hidden md:flex items-center text-slate-400 italic">
-                        <i class="fa-solid fa-circle-info text-emerald-600 mr-1"></i>
-                        Κάντε κλικ σε οποιοδήποτε κελάκι για γρήγορη επεξεργασία.
-                    </div>
+                <div class="hidden lg:flex items-center text-slate-400 italic text-xs">
+                    <i class="fa-solid fa-circle-info text-emerald-600 mr-1"></i>
+                    Κάντε κλικ σε οποιοδήποτε κελάκι για γρήγορη επεξεργασία.
                 </div>
             </div>
 
@@ -637,6 +653,7 @@
         let appState = {
             currentYear: 2026,
             displayMode: 'ALL',
+            matrixMonthFilter: 'CURRENT',
             sections: DEFAULT_SECTIONS,
             budgetData: {
                 2026: INITIAL_2026_DATA
@@ -650,6 +667,8 @@
         window.onload = function() {
             loadFromStorage();
             initDefaultYearData(appState.currentYear);
+            populateMatrixMonthSelect();
+            updateMatrixMonthFilterUI();
             renderMatrixHeader();
             renderMatrixTable();
             renderDashboard();
@@ -791,6 +810,8 @@
             appState.currentYear += delta;
             document.getElementById('currentYearDisplay').innerText = appState.currentYear;
             initDefaultYearData(appState.currentYear);
+            populateMatrixMonthSelect();
+            updateMatrixMonthFilterUI();
             renderMatrixHeader();
             renderMatrixTable();
             renderDashboard();
@@ -798,6 +819,77 @@
             updateStorageInfoDisplay();
             appState.lastSaved = new Date().toISOString();
             saveToStorage();
+        }
+
+        function getVisibleMonthIndices() {
+            if (appState.matrixMonthFilter === 'ALL') {
+                return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+            }
+            if (appState.matrixMonthFilter === 'CURRENT') {
+                return [new Date().getMonth()];
+            }
+            const parsed = parseInt(appState.matrixMonthFilter);
+            if (!isNaN(parsed) && parsed >= 0 && parsed <= 11) {
+                return [parsed];
+            }
+            return [new Date().getMonth()];
+        }
+
+        function populateMatrixMonthSelect() {
+            const select = document.getElementById('matrixMonthFilter');
+            if (!select) return;
+
+            const curMonthIdx = new Date().getMonth();
+            const curMonthName = MONTH_NAMES_GR[curMonthIdx];
+
+            select.innerHTML = `
+                <option value="CURRENT">⭐ Τρέχων Μήνας (${curMonthName})</option>
+                <option value="ALL">📅 Όλοι οι Μήνες (12 Μήνες)</option>
+                <optgroup label="Επιλογή Άλλου Μήνα">
+                    ${MONTH_NAMES_GR.map((m, idx) => {
+                        const isCur = idx === curMonthIdx ? ' (Τρέχων)' : '';
+                        return `<option value="${idx}">${idx + 1}. ${m}${isCur}</option>`;
+                    }).join('')}
+                </optgroup>
+            `;
+            select.value = appState.matrixMonthFilter || 'CURRENT';
+        }
+
+        function updateMatrixMonthFilterUI() {
+            const select = document.getElementById('matrixMonthFilter');
+            if (select) select.value = appState.matrixMonthFilter;
+
+            const btnCurr = document.getElementById('btnMonthCurrent');
+            const btnAll = document.getElementById('btnMonthAll');
+
+            if (btnCurr && btnAll) {
+                if (appState.matrixMonthFilter === 'CURRENT') {
+                    btnCurr.className = 'px-2.5 py-1 rounded-lg text-xs font-bold transition bg-emerald-600 text-white shadow-sm flex items-center space-x-1';
+                    btnAll.className = 'px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-200 transition flex items-center space-x-1';
+                } else if (appState.matrixMonthFilter === 'ALL') {
+                    btnCurr.className = 'px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-200 transition flex items-center space-x-1';
+                    btnAll.className = 'px-2.5 py-1 rounded-lg text-xs font-bold transition bg-slate-800 text-white shadow-sm flex items-center space-x-1';
+                } else {
+                    btnCurr.className = 'px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-200 transition flex items-center space-x-1';
+                    btnAll.className = 'px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-200 transition flex items-center space-x-1';
+                }
+            }
+        }
+
+        function changeMatrixMonthFilter(mode) {
+            appState.matrixMonthFilter = mode;
+            updateMatrixMonthFilterUI();
+            renderMatrixHeader();
+            renderMatrixTable();
+
+            const visible = getVisibleMonthIndices();
+            if (mode === 'CURRENT') {
+                showToast(`Προβολή τρέχοντος μήνα: ${MONTH_NAMES_GR[new Date().getMonth()]}`, 'info');
+            } else if (mode === 'ALL') {
+                showToast('Προβολή όλων των 12 μηνών', 'info');
+            } else if (visible.length === 1) {
+                showToast(`Προβολή μήνα: ${MONTH_NAMES_GR[visible[0]]}`, 'info');
+            }
         }
 
         function renderMatrixHeader() {
@@ -811,42 +903,59 @@
             const curCalendarMonth = new Date().getMonth();
             const curCalendarYear = new Date().getFullYear();
             const isAllMode = appState.displayMode === 'ALL';
-            const colMinWidth = isAllMode ? 'min-w-[150px] sm:min-w-[165px]' : 'min-w-[105px] sm:min-w-[120px]';
+            const visibleMonths = getVisibleMonthIndices();
+            const isSingleMonth = visibleMonths.length === 1;
 
-            MONTH_NAMES.forEach((m, idx) => {
+            const colMinWidth = isAllMode 
+                ? (isSingleMonth ? 'min-w-[180px] sm:min-w-[220px]' : 'min-w-[150px] sm:min-w-[165px]') 
+                : (isSingleMonth ? 'min-w-[120px] sm:min-w-[140px]' : 'min-w-[105px] sm:min-w-[120px]');
+
+            visibleMonths.forEach((idx) => {
+                const m = MONTH_NAMES[idx];
+                const mFull = MONTH_NAMES_GR[idx];
                 const isCurrentMonth = (idx === curCalendarMonth && appState.currentYear === curCalendarYear);
                 const th = document.createElement('th');
                 th.id = `th_month_${idx}`;
                 th.className = `p-2 text-center border-b border-slate-800 ${colMinWidth} transition ${isCurrentMonth ? 'bg-slate-800/90 ring-1 ring-inset ring-emerald-500/50' : ''}`;
+                
+                const titleText = isSingleMonth ? `${mFull.toUpperCase()} (${m})` : m;
+
                 th.innerHTML = `
-                    <div class="flex items-center justify-center space-x-1">
-                        <span class="font-bold text-emerald-400 text-xs">${m}</span>
-                        ${isCurrentMonth ? '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" title="Τρέχων Ημερολογιακός Μήνας"></span>' : ''}
+                    <div class="flex items-center justify-center space-x-1.5">
+                        <span class="font-bold text-emerald-400 text-xs sm:text-sm">${titleText}</span>
+                        ${isCurrentMonth ? '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="Τρέχων Ημερολογιακός Μήνας"></span>' : ''}
                     </div>
-                    ${isAllMode ? '<div class="grid grid-cols-3 text-[9px] text-slate-400 mt-0.5"><span class="text-blue-300">Bud</span><span class="text-emerald-300">Act</span><span>Diff</span></div>' : ''}
+                    ${isAllMode ? '<div class="grid grid-cols-3 text-[9px] text-slate-400 mt-0.5"><span class="text-blue-300 font-semibold">Bud</span><span class="text-emerald-300 font-semibold">Act</span><span class="font-semibold">Diff</span></div>' : ''}
                 `;
                 headerRow.appendChild(th);
             });
 
             const totalTh = document.createElement('th');
-            const totalMinWidth = isAllMode ? 'min-w-[160px] sm:min-w-[180px]' : 'min-w-[110px] sm:min-w-[130px]';
+            const totalMinWidth = isAllMode 
+                ? (isSingleMonth ? 'min-w-[180px] sm:min-w-[220px]' : 'min-w-[160px] sm:min-w-[180px]') 
+                : (isSingleMonth ? 'min-w-[120px] sm:min-w-[140px]' : 'min-w-[110px] sm:min-w-[130px]');
             totalTh.className = `p-2 text-center bg-slate-800 border-b border-slate-700 ${totalMinWidth}`;
             totalTh.innerHTML = `
-                <div class="font-bold text-amber-400 text-xs">ΣΥΝΟΛΟ ΕΤΟΥΣ</div>
-                ${isAllMode ? '<div class="grid grid-cols-3 text-[9px] text-slate-300 mt-0.5"><span>Bud</span><span>Act</span><span>Diff</span></div>' : ''}
+                <div class="font-bold text-amber-400 text-xs sm:text-sm">ΣΥΝΟΛΟ ΕΤΟΥΣ</div>
+                ${isAllMode ? '<div class="grid grid-cols-3 text-[9px] text-slate-300 mt-0.5"><span class="font-semibold">Bud</span><span class="font-semibold">Act</span><span class="font-semibold">Diff</span></div>' : ''}
             `;
             headerRow.appendChild(totalTh);
         }
 
         function scrollToCurrentMonth() {
-            const curMonthIdx = new Date().getMonth();
-            const tableContainer = document.querySelector('#view-matrix .overflow-x-auto');
-            const targetTh = document.getElementById(`th_month_${curMonthIdx}`);
-            if (tableContainer && targetTh) {
-                const leftPos = targetTh.offsetLeft - 150;
-                tableContainer.scrollTo({ left: Math.max(0, leftPos), behavior: 'smooth' });
-                showToast(`Μετάβαση στον μήνα ${MONTH_NAMES_GR[curMonthIdx]}`, 'info');
+            if (appState.matrixMonthFilter !== 'ALL') {
+                changeMatrixMonthFilter('ALL');
             }
+            setTimeout(() => {
+                const curMonthIdx = new Date().getMonth();
+                const tableContainer = document.querySelector('#view-matrix .overflow-x-auto');
+                const targetTh = document.getElementById(`th_month_${curMonthIdx}`);
+                if (tableContainer && targetTh) {
+                    const leftPos = targetTh.offsetLeft - 150;
+                    tableContainer.scrollTo({ left: Math.max(0, leftPos), behavior: 'smooth' });
+                    showToast(`Μετάβαση στον μήνα ${MONTH_NAMES_GR[curMonthIdx]}`, 'info');
+                }
+            }, 60);
         }
 
         function toggleMatrixDisplay(mode) {
@@ -869,6 +978,7 @@
 
             const year = appState.currentYear;
             const yData = appState.budgetData[year] || {};
+            const visibleMonths = getVisibleMonthIndices();
 
             const getVal = (itemId, monthIdx) => {
                 if (yData[itemId] && yData[itemId][monthIdx]) {
@@ -887,9 +997,9 @@
                 
                 let secHtml = `<td class="p-2.5 sticky-col-left ${sec.type === 'INCOME' ? 'bg-emerald-800' : 'bg-slate-800'} shadow-r truncate w-36 sm:w-56 min-w-[130px] sm:min-w-[220px] max-w-[130px] sm:max-w-[220px]" title="${sec.title}">${sec.title}</td>`;
                 
-                for (let m = 0; m < 12; m++) {
+                visibleMonths.forEach(() => {
                     secHtml += `<td class="p-2 text-center text-[10px] text-slate-300">--</td>`;
-                }
+                });
                 secHtml += `<td class="p-2 text-center text-[10px] text-slate-300">--</td>`;
                 secHeaderTr.innerHTML = secHtml;
                 tbody.appendChild(secHeaderTr);
@@ -911,11 +1021,12 @@
                         sectionTotals[sec.id][m].budget += cell.budget;
                         sectionTotals[sec.id][m].actual += cell.actual;
 
-                        const diff = sec.type === 'INCOME' ? (cell.actual - cell.budget) : (cell.budget - cell.actual);
-                        
-                        rowHtml += `<td onclick="openCellEditModal('${item.id}', ${m}, '${escapeHtml(item.name)}')" class="p-1 text-center cursor-pointer hover:bg-emerald-50 transition border-r border-slate-100 select-none" title="Κλικ για επεξεργασία: ${item.name} (${MONTH_NAMES_GR[m]})">
-                            ${renderCellContent(cell.budget, cell.actual, diff, sec.type)}
-                        </td>`;
+                        if (visibleMonths.includes(m)) {
+                            const diff = sec.type === 'INCOME' ? (cell.actual - cell.budget) : (cell.budget - cell.actual);
+                            rowHtml += `<td onclick="openCellEditModal('${item.id}', ${m}, '${escapeHtml(item.name)}')" class="p-1 text-center cursor-pointer hover:bg-emerald-50 transition border-r border-slate-100 select-none" title="Κλικ για επεξεργασία: ${item.name} (${MONTH_NAMES_GR[m]})">
+                                ${renderCellContent(cell.budget, cell.actual, diff, sec.type)}
+                            </td>`;
+                        }
                     }
 
                     const yearDiff = sec.type === 'INCOME' ? (itemYearActual - itemYearBudget) : (itemYearBudget - itemYearActual);
@@ -940,8 +1051,10 @@
                     secYearBudget += bVal;
                     secYearActual += aVal;
 
-                    const diff = sec.type === 'INCOME' ? (aVal - bVal) : (bVal - aVal);
-                    subHtml += `<td class="p-1.5 text-center border-r border-slate-200">${renderCellContent(bVal, aVal, diff, sec.type)}</td>`;
+                    if (visibleMonths.includes(m)) {
+                        const diff = sec.type === 'INCOME' ? (aVal - bVal) : (bVal - aVal);
+                        subHtml += `<td class="p-1.5 text-center border-r border-slate-200">${renderCellContent(bVal, aVal, diff, sec.type)}</td>`;
+                    }
                 }
 
                 const secYearDiff = sec.type === 'INCOME' ? (secYearActual - secYearBudget) : (secYearBudget - secYearActual);
@@ -951,10 +1064,11 @@
                 tbody.appendChild(subTr);
             });
 
-            renderGrandTotalsRow(tbody, sectionTotals);
+            renderGrandTotalsRow(tbody, sectionTotals, visibleMonths);
         }
 
-        function renderGrandTotalsRow(tbody, sectionTotals) {
+        function renderGrandTotalsRow(tbody, sectionTotals, visibleMonths) {
+            if (!visibleMonths) visibleMonths = getVisibleMonthIndices();
             const netTr = document.createElement('tr');
             netTr.className = 'bg-slate-900 text-white font-extrabold text-xs shadow-lg';
 
@@ -979,11 +1093,12 @@
                 yearNetBudget += netBud;
                 yearNetActual += netAct;
 
-                const diff = netAct - netBud;
-
-                netHtml += `<td class="p-2 text-center border-r border-slate-800">
-                    ${renderCellContent(netBud, netAct, diff, 'NET')}
-                </td>`;
+                if (visibleMonths.includes(m)) {
+                    const diff = netAct - netBud;
+                    netHtml += `<td class="p-2 text-center border-r border-slate-800">
+                        ${renderCellContent(netBud, netAct, diff, 'NET')}
+                    </td>`;
+                }
             }
 
             const yearNetDiff = yearNetActual - yearNetBudget;
@@ -1757,6 +1872,8 @@
                     saveToStorage();
 
                     document.getElementById('currentYearDisplay').innerText = appState.currentYear;
+                    populateMatrixMonthSelect();
+                    updateMatrixMonthFilterUI();
                     renderMatrixHeader();
                     renderMatrixTable();
                     renderDashboard();
@@ -1785,11 +1902,14 @@
                 appState.sections = DEFAULT_SECTIONS;
                 appState.budgetData = {};
                 appState.currentYear = 2026;
+                appState.matrixMonthFilter = 'CURRENT';
                 initDefaultYearData(2026);
                 
                 appState.lastSaved = new Date().toISOString();
                 saveToStorage();
                 
+                populateMatrixMonthSelect();
+                updateMatrixMonthFilterUI();
                 renderMatrixHeader();
                 renderMatrixTable();
                 renderDashboard();
